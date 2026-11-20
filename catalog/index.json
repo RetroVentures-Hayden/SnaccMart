@@ -17,10 +17,12 @@
       "filetype": "nro",
       "install_path": "/switch/switch-sysinfo/",
       "sha256": "aadbfa1533916aef99e3b6485e059b3e7bb59dd99a2ca8e0a085c4d58aed79a9",
-      "platforms": ["switch", "emulator"],
+      "platforms": [
+        "switch",
+        "emulator"
+      ],
       "updated": "2026-11-20"
     },
-
     {
       "id": "ftpd",
       "name": "ftpd",
@@ -30,11 +32,13 @@
       "version": "latest",
       "license": "GPL-3.0-or-later",
       "source": "https://github.com/mtheall/ftpd",
-      "download": "https://github.com/mtheall/ftpd/releases/latest",
+      "download": "https://github.com/mtheall/ftpd/releases/download/v3.2.1/ftpd.nro",
       "filetype": "nro",
-      "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "cc8b2b335ccbe1bf1215a29c4ef3698effc879d3ddde2c6c0de505d14bc39c90"
     },
     {
       "id": "nx-shell",
@@ -45,11 +49,13 @@
       "version": "latest",
       "license": "GPL-2.0-or-later",
       "source": "https://github.com/joel16/NX-Shell",
-      "download": "https://github.com/joel16/NX-Shell/releases/latest",
+      "download": "https://github.com/joel16/NX-Shell/releases/download/4.01/NX-Shell.nro",
       "filetype": "nro",
-      "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "5aafd64efde89c0881cdbd865a1b2b054e20329d43e0bce0e1b77378977f5878"
     },
     {
       "id": "checkpoint",
@@ -60,11 +66,13 @@
       "version": "latest",
       "license": "GPL-3.0-or-later",
       "source": "https://github.com/FlagBrew/Checkpoint",
-      "download": "https://github.com/FlagBrew/Checkpoint/releases/latest",
+      "download": "https://github.com/BernardoGiordano/Checkpoint/releases/download/v5.3.0/Checkpoint.nro",
       "filetype": "nro",
-      "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "e2c76687df29f845f11a61a62a25327703b22250d4a78dbdbed6dd1401253e48"
     },
     {
       "id": "jksv",
@@ -75,11 +83,13 @@
       "version": "latest",
       "license": "GPL-3.0-or-later",
       "source": "https://github.com/J-D-K/JKSV",
-      "download": "https://github.com/J-D-K/JKSV/releases/latest",
+      "download": "https://github.com/J-D-K/JKSV/releases/download/12/02/2025/JKSV.nro",
       "filetype": "nro",
-      "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "a2b7f6372a4b81f3c3194aa6f96f2824bdea853b9a8ebf8c4a008d0d865a0cbf"
     },
     {
       "id": "moonlight-switch",
@@ -90,11 +100,13 @@
       "version": "latest",
       "license": "GPL-3.0-or-later",
       "source": "https://github.com/XITRIX/Moonlight-Switch",
-      "download": "https://github.com/XITRIX/Moonlight-Switch/releases/latest",
+      "download": "https://github.com/XITRIX/Moonlight-Switch/releases/download/v1.5.0/Moonlight-Switch.nro",
       "filetype": "nro",
-      "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "594167a17b587d3bf828ea3477afbe71c114b4ef5d25940ea4ca831788d0af69"
     },
     {
       "id": "nx-activity-log",
@@ -105,11 +117,13 @@
       "version": "latest",
       "license": "MIT",
       "source": "https://github.com/zdm65477730/NX-Activity-Log",
-      "download": "https://github.com/zdm65477730/NX-Activity-Log/releases/latest",
+      "download": "https://github.com/zdm65477730/NX-Activity-Log/releases/download/v1.6.0/NX-Activity-Log.nro",
       "filetype": "nro",
-      "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "c04a84744535fc483222593771a8781cef564314a1766e754821b0c69919eea4"
     },
     {
       "id": "nx-hbmenu",
@@ -120,11 +134,15 @@
       "version": "latest",
       "license": "ISC",
       "source": "https://github.com/switchbrew/nx-hbmenu",
-      "download": "https://github.com/switchbrew/nx-hbmenu/releases/latest",
-      "filetype": "nro",
+      "download": "https://github.com/switchbrew/nx-hbmenu/releases/download/v3.6.1/nx-hbmenu_v3.6.1.zip",
+      "filetype": "zip",
       "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "4790c58fdd75c4bcc644fa8135fa11c380cb3ebaf685e400e336031972410ee7",
+      "binary": ""
     },
     {
       "id": "hb-appstore",
@@ -135,11 +153,13 @@
       "version": "latest",
       "license": "GPL-3.0-or-later",
       "source": "https://github.com/fortheusers/hb-appstore",
-      "download": "https://github.com/fortheusers/hb-appstore/releases/latest",
+      "download": "https://github.com/fortheusers/hb-appstore/releases/download/v2.3.2/appstore.nro",
       "filetype": "nro",
-      "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "de1ab28c4c142cafd45fb4bfef9ce560122d8aec063f5947982c759e3691e978"
     },
     {
       "id": "fizeau",
@@ -150,12 +170,15 @@
       "version": "latest",
       "license": "GPL-2.0-or-later",
       "source": "https://github.com/averne/Fizeau",
-      "download": "https://github.com/averne/Fizeau/releases/latest",
+      "download": "https://github.com/averne/Fizeau/releases/download/v2.8.3/Fizeau-2.8.3-5bf3f0d.zip",
       "filetype": "zip",
       "binary": "",
       "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "65145e8d6137a9921edf4d79b0bc3a4f6dda9069ff8794642e00377e33fc9652"
     },
     {
       "id": "sys-con",
@@ -166,14 +189,16 @@
       "version": "latest",
       "license": "GPL-3.0-or-later",
       "source": "https://github.com/cathery/sys-con",
-      "download": "https://github.com/cathery/sys-con/releases/latest",
+      "download": "https://github.com/cathery/sys-con/releases/download/v0.6.5/sys-con-0.6.5.zip",
       "filetype": "zip",
       "binary": "",
       "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "a0bcfca1a443ffe8d007c45b30235e3750cc42d709086024853b2193a3cec581"
     },
-
     {
       "id": "mgba",
       "name": "mGBA",
@@ -187,7 +212,9 @@
       "filetype": "nro",
       "requires_assets": true,
       "pending": true,
-      "platforms": ["switch"],
+      "platforms": [
+        "switch"
+      ],
       "updated": "2026-11-20"
     },
     {
@@ -204,7 +231,9 @@
       "binary": "",
       "requires_assets": true,
       "pending": true,
-      "platforms": ["switch"],
+      "platforms": [
+        "switch"
+      ],
       "updated": "2026-11-20"
     },
     {
@@ -220,7 +249,9 @@
       "filetype": "nro",
       "requires_assets": true,
       "pending": true,
-      "platforms": ["switch"],
+      "platforms": [
+        "switch"
+      ],
       "updated": "2026-11-20"
     },
     {
@@ -236,7 +267,9 @@
       "filetype": "nro",
       "requires_assets": true,
       "pending": true,
-      "platforms": ["switch"],
+      "platforms": [
+        "switch"
+      ],
       "updated": "2026-11-20"
     },
     {
@@ -251,7 +284,9 @@
       "download": "https://github.com/Cpasjuste/pplay/releases/latest",
       "filetype": "nro",
       "pending": true,
-      "platforms": ["switch"],
+      "platforms": [
+        "switch"
+      ],
       "updated": "2026-11-20"
     },
     {
@@ -263,12 +298,15 @@
       "version": "latest",
       "license": "Beerware",
       "source": "https://github.com/retronx-team/sys-clk",
-      "download": "https://github.com/retronx-team/sys-clk/releases/latest",
+      "download": "https://github.com/retronx-team/sys-clk/releases/download/2.0.1/sys-clk-2.0.1-21fix.zip",
       "filetype": "zip",
       "binary": "",
       "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "2099d960644afb07564b803d5b06bd37554cb186d5bac8868da96307148a5cd7"
     },
     {
       "id": "tesla-menu",
@@ -279,12 +317,15 @@
       "version": "latest",
       "license": "GPL-2.0-or-later",
       "source": "https://github.com/WerWolv/Tesla-Menu",
-      "download": "https://github.com/WerWolv/Tesla-Menu/releases/latest",
+      "download": "https://github.com/WerWolv/Tesla-Menu/releases/download/v1.2.3/ovlmenu.zip",
       "filetype": "zip",
       "binary": "",
       "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "d0fe6de0d0d9b197361a50c25ef8d1639437ed6276644abebea7e53eb151f769"
     },
     {
       "id": "status-monitor-overlay",
@@ -299,7 +340,9 @@
       "filetype": "zip",
       "binary": "",
       "pending": true,
-      "platforms": ["switch"],
+      "platforms": [
+        "switch"
+      ],
       "updated": "2026-11-20"
     },
     {
@@ -311,11 +354,13 @@
       "version": "latest",
       "license": "GPL-2.0-or-later",
       "source": "https://github.com/exelix11/SwitchThemeInjector",
-      "download": "https://github.com/exelix11/SwitchThemeInjector/releases/latest",
+      "download": "https://github.com/exelix11/SwitchThemeInjector/releases/download/nxt-3.0.2/NXThemesInstaller.nro",
       "filetype": "nro",
-      "pending": true,
-      "platforms": ["switch"],
-      "updated": "2026-11-20"
+      "platforms": [
+        "switch"
+      ],
+      "updated": "2026-11-20",
+      "sha256": "36ac0fac5477e08a176b2f155b8b3c170c1291004d943541348599bae8cf97a1"
     }
   ]
 }
