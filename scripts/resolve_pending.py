@@ -1,42 +1,58 @@
 #!/usr/bin/env python3
 """Resolve pending catalog entries to a real release asset + sha256.
 
-For every app in catalog/index.json marked "pending", this looks up the repo's
-LATEST release, picks the .nro (or .zip) asset, downloads it, hashes it, and —
-with --apply — fills in download/filetype/sha256 and clears pending.
+Standard library only — no `gh`, no login, no install beyond Python 3. It uses
+the public GitHub API (anonymous works for public repos; 60 requests/hour).
 
-Run it on a machine with the GitHub CLI (`gh`) authenticated and network access
-(this cannot run in the restricted build sandbox). Then regenerate + commit:
+Run it anywhere with Python 3 and internet:
 
-    python3 scripts/resolve_pending.py           # dry run: report only
-    python3 scripts/resolve_pending.py --apply    # update catalog/index.json
-    python3 scripts/gen_romfs_catalog.py          # refresh catalog.tsv
+    python3 scripts/resolve_pending.py           # print resolved URL + sha256
+    python3 scripts/resolve_pending.py --apply    # also write them into index.json
+
+For the simplest path, just run the dry run and paste the output back to whoever
+maintains the catalog — they can fill it in. With a local checkout, --apply
+updates catalog/index.json directly; then:
+
+    python3 scripts/gen_romfs_catalog.py
     python3 scripts/validate.py
 
-Asset pick order: exact "<id>.nro" > a single .nro > a single .zip. If a release
-has several plausible assets (e.g. RetroArch's per-core builds), it is reported
-as AMBIGUOUS and left pending for you to resolve by hand.
+Optional: set GITHUB_TOKEN in the environment to raise the API rate limit.
 """
 import hashlib
 import json
 import os
 import pathlib
 import re
-import subprocess
 import sys
-import tempfile
 import urllib.request
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-INDEX = ROOT / "catalog" / "index.json"
+INDEX = pathlib.Path("catalog/index.json")
+RAW_INDEX = "https://raw.githubusercontent.com/RetroVentures-Hayden/SnaccMart/main/catalog/index.json"
 APPLY = "--apply" in sys.argv
+UA = "SnaccMart-resolver"
+TOKEN = os.environ.get("GITHUB_TOKEN", "")
 
 
-def gh_json(path):
-    out = subprocess.run(["gh", "api", path], capture_output=True, text=True)
-    if out.returncode != 0:
+def _open(url, accept):
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": accept})
+    if TOKEN:
+        req.add_header("Authorization", f"Bearer {TOKEN}")
+    return urllib.request.urlopen(req)  # noqa: S310 (github over https)
+
+
+def api(path):
+    try:
+        with _open(f"https://api.github.com/{path}", "application/vnd.github+json") as r:
+            return json.load(r)
+    except Exception:
         return None
-    return json.loads(out.stdout)
+
+
+def load_index():
+    if INDEX.exists():
+        return json.loads(INDEX.read_text(encoding="utf-8")), True
+    with _open(RAW_INDEX, "*/*") as r:
+        return json.load(r), False
 
 
 def repo_from_source(url):
@@ -59,16 +75,20 @@ def pick_asset(app_id, assets):
 
 def sha256_url(url):
     h = hashlib.sha256()
-    with urllib.request.urlopen(url) as r:  # noqa: S310 (trusted github URL)
+    with _open(url, "*/*") as r:
         for chunk in iter(lambda: r.read(1 << 16), b""):
             h.update(chunk)
     return h.hexdigest()
 
 
 def main():
-    data = json.loads(INDEX.read_text(encoding="utf-8"))
+    data, local = load_index()
+    apply = APPLY and local
+    if APPLY and not local:
+        print("note: --apply needs a local checkout; printing results only.\n")
+
     changed = 0
-    for app in data["apps"]:
+    for app in data.get("apps", []):
         if not app.get("pending"):
             continue
         aid = app["id"]
@@ -76,13 +96,14 @@ def main():
         if not owner:
             print(f"SKIP   {aid}: can't parse source repo")
             continue
-        rel = gh_json(f"repos/{owner}/{repo}/releases/latest")
+        rel = api(f"repos/{owner}/{repo}/releases/latest")
         if not rel or "assets" not in rel:
             print(f"SKIP   {aid}: no latest release for {owner}/{repo}")
             continue
         asset, how = pick_asset(aid, rel["assets"])
         if not asset:
-            print(f"MANUAL {aid}: {how} — {len(rel['assets'])} assets in {rel.get('tag_name')}")
+            print(f"MANUAL {aid}: {how} ({len(rel['assets'])} assets in {rel.get('tag_name')}) "
+                  f"- pick one at {rel.get('html_url')}")
             continue
         url = asset["browser_download_url"]
         try:
@@ -91,8 +112,10 @@ def main():
             print(f"ERROR  {aid}: download failed: {e}")
             continue
         ftype = "zip" if asset["name"].lower().endswith(".zip") else "nro"
-        print(f"OK     {aid}: {asset['name']} ({how})\n        {url}\n        sha256={digest}")
-        if APPLY:
+        print(f"OK     {aid}: {asset['name']} ({how})")
+        print(f"        download: {url}")
+        print(f"        sha256:   {digest}")
+        if apply:
             app["download"] = url
             app["filetype"] = ftype
             app["sha256"] = digest
@@ -101,12 +124,10 @@ def main():
                 app.pop("binary", None)
             changed += 1
 
-    if APPLY and changed:
+    if apply and changed:
         INDEX.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        print(f"\nUpdated {changed} entr(y/ies) in {INDEX.relative_to(ROOT)}. "
-              f"Now run: python3 scripts/gen_romfs_catalog.py && python3 scripts/validate.py")
-    elif APPLY:
-        print("\nNothing applied.")
+        print(f"\nUpdated {changed} entr(y/ies). Next: "
+              f"python3 scripts/gen_romfs_catalog.py && python3 scripts/validate.py")
 
 
 if __name__ == "__main__":

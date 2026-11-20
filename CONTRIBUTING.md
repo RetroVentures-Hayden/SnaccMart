@@ -66,8 +66,7 @@ python3 scripts/validate.py
 ## Promoting a pending entry (maintainers)
 
 Entries added without a verified download are marked `"pending": true` (shown as
-"coming soon", not installable). To promote them, run — **on a machine with the
-GitHub CLI authenticated and network access** (not the build sandbox) — from the
+"coming soon", not installable). To promote them, run — **on any machine with Python 3 and internet** (no GitHub CLI or login needed) — from the
 repo root:
 
 ```bash
