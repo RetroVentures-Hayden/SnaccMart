@@ -1,0 +1,42 @@
+name: client-net
+
+# Builds the NETWORKED client (download + install over HTTPS). Separate from the
+# default `client` workflow so adding the switch-curl portlib can't turn the
+# main build red. Run it on demand to test/produce the networked .nro.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build helpers + CA fetcher
+        run: |
+          command -v python3 >/dev/null 2>&1 && command -v curl >/dev/null 2>&1 \
+            || (apt-get update && apt-get install -y --no-install-recommends python3 curl ca-certificates)
+
+      - name: Install switch-curl portlib
+        run: dkp-pacman -S --noconfirm switch-curl
+
+      - name: Generate catalog + CA bundle
+        run: |
+          python3 scripts/gen_romfs_catalog.py
+          curl -fsSL -o client/romfs/cacert.pem https://curl.se/ca/cacert.pem
+          ls -l client/romfs/
+
+      - name: Build networked client
+        run: |
+          export DEVKITPRO=/opt/devkitpro
+          cd client && make STORE_NETWORK=1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-store-net-nro
+          path: client/*.nro
+          if-no-files-found: error

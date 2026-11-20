@@ -24,13 +24,20 @@ APP_VERSION := 0.1.0
 #---------------------------------------------------------------------------------
 ARCH    := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
+# STORE_NETWORK=1 builds the networked variant (download + install over HTTPS),
+# which links switch-curl. Default 0 keeps the build dependency-free (browse-only).
+STORE_NETWORK ?= 0
+
 CFLAGS  := -g -Wall -O2 -ffunction-sections $(ARCH) $(DEFINES)
-CFLAGS  += $(INCLUDE) -D__SWITCH__
+CFLAGS  += $(INCLUDE) -D__SWITCH__ -DSTORE_NETWORK=$(STORE_NETWORK)
 CXXFLAGS := $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS := -g $(ARCH)
 LDFLAGS  = -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 LIBS    := -lnx
+ifeq ($(STORE_NETWORK),1)
+    LIBS := -lcurl -lz -lmbedtls -lmbedx509 -lmbedcrypto -lnx
+endif
 
 LIBDIRS := $(PORTLIBS) $(LIBNX)
 

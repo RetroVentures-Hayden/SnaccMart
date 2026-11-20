@@ -13,6 +13,10 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#if STORE_NETWORK
+#include <curl/curl.h>
+#include <sys/stat.h>
+#endif
 
 namespace {
 
@@ -85,6 +89,56 @@ bool loadCatalog() {
     return true;
 }
 
+char g_status[256] = "";
+
+#if STORE_NETWORK
+size_t writeToFile(void* ptr, size_t sz, size_t nm, void* f) {
+    return fwrite(ptr, sz, nm, static_cast<FILE*>(f));
+}
+
+// Download the selected app's .nro over HTTPS and install it to
+// sdmc:/switch/<id>/<id>.nro. Blocking; updates g_status with the result.
+bool installApp(const App& a) {
+    if (!a.download[0]) { snprintf(g_status, sizeof(g_status), "No download URL."); return false; }
+
+    char dir[256];
+    snprintf(dir, sizeof(dir), "sdmc:/switch/%s", a.id);
+    mkdir("sdmc:/switch", 0777);
+    mkdir(dir, 0777);
+
+    char out[512];
+    snprintf(out, sizeof(out), "%s/%s.nro", dir, a.id);
+
+    FILE* f = fopen(out, "wb");
+    if (!f) { snprintf(g_status, sizeof(g_status), "Error: cannot write to SD card."); return false; }
+
+    CURL* c = curl_easy_init();
+    if (!c) { fclose(f); remove(out); snprintf(g_status, sizeof(g_status), "Error: curl init failed."); return false; }
+    curl_easy_setopt(c, CURLOPT_URL, a.download);
+    curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, writeToFile);
+    curl_easy_setopt(c, CURLOPT_WRITEDATA, f);
+    curl_easy_setopt(c, CURLOPT_CAINFO, "romfs:/cacert.pem"); // bundled CA store
+    curl_easy_setopt(c, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(c, CURLOPT_SSL_VERIFYHOST, 2L);
+    curl_easy_setopt(c, CURLOPT_USERAGENT, "SnaccMart/0.2");
+    curl_easy_setopt(c, CURLOPT_FAILONERROR, 1L);
+    curl_easy_setopt(c, CURLOPT_TIMEOUT, 120L);
+
+    CURLcode rc = curl_easy_perform(c);
+    curl_easy_cleanup(c);
+    fclose(f);
+
+    if (rc != CURLE_OK) {
+        remove(out);
+        snprintf(g_status, sizeof(g_status), "Download failed: %s", curl_easy_strerror(rc));
+        return false;
+    }
+    snprintf(g_status, sizeof(g_status), "Installed to %s", out);
+    return true;
+}
+#endif
+
 void header() {
     printf("%s%s  Switch Homebrew Store%s  %sv0.1%s\n", BOLD, CYAN, RESET, DIM, RESET);
     for (int i = 0; i < 80; ++i) putchar('-');
@@ -135,9 +189,14 @@ void drawDetail(const App& a) {
     printf("  %sInstalls%s  : sdmc:/switch/%s/\n", BOLD, RESET, a.id);
     if (a.assets)
         printf("\n  %s! Needs your own legally-owned data files.%s\n", YELLOW, RESET);
-    printf("\n  %sInstall from the console is coming in v0.2 (network).\n", DIM);
+#if STORE_NETWORK
+    if (g_status[0]) printf("\n  %s%s%s\n", GREEN, g_status, RESET);
+    printf("\n  %sX: download & install to SD   B: back   +: exit%s\n", DIM, RESET);
+#else
+    printf("\n  %sInstall from the console needs the networked build (v0.2).\n", DIM);
     printf("  For now, download from the Source/Download URL on a PC.%s\n", RESET);
     printf("\n  %sB: back   +: exit%s\n", DIM, RESET);
+#endif
 }
 
 } // namespace
@@ -146,6 +205,11 @@ int main(int argc, char** argv) {
     consoleInit(NULL);
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     PadState pad; padInitializeDefault(&pad);
+
+#if STORE_NETWORK
+    socketInitializeDefault();
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+#endif
 
     bool haveRomfs = R_SUCCEEDED(romfsInit());
     if (haveRomfs) loadCatalog();
@@ -167,7 +231,15 @@ int main(int argc, char** argv) {
             if (sel < top) top = sel;
             if (sel >= top + VIS) top = sel - VIS + 1;
         } else {
-            if (kDown & HidNpadButton_B) { detail = false; redraw = true; }
+            if (kDown & HidNpadButton_B) { detail = false; g_status[0] = '\0'; redraw = true; }
+#if STORE_NETWORK
+            if (kDown & HidNpadButton_X) {
+                snprintf(g_status, sizeof(g_status), "Downloading...");
+                clearScreen(); drawDetail(apps[sel]); consoleUpdate(NULL);
+                installApp(apps[sel]); // blocking; sets g_status
+                redraw = true;
+            }
+#endif
         }
 
         if (redraw) {
@@ -180,6 +252,10 @@ int main(int argc, char** argv) {
     }
 
     if (haveRomfs) romfsExit();
+#if STORE_NETWORK
+    curl_global_cleanup();
+    socketExit();
+#endif
     consoleExit(NULL);
     return 0;
 }
