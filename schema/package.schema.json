@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/switch-appstore/package.schema.json",
+  "title": "Homebrew package entry",
+  "description": "One app in the store catalog. Open-source homebrew only; no copyrighted ROMs, game assets, firmware, or exploit/CFW payloads.",
+  "type": "object",
+  "required": ["id", "name", "author", "category", "license", "source", "version", "download", "filetype"],
+  "additionalProperties": false,
+  "properties": {
+    "id":        { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$", "description": "Unique slug, e.g. \"switch-sysinfo\"." },
+    "name":      { "type": "string", "minLength": 1, "maxLength": 80, "description": "Display title." },
+    "author":    { "type": "string", "minLength": 1, "maxLength": 80 },
+    "category":  { "type": "string", "enum": ["tool", "game", "port", "emulator", "media", "system", "other"] },
+    "description": { "type": "string", "maxLength": 200, "description": "One-line summary." },
+    "details":   { "type": "string", "maxLength": 4000, "description": "Longer description (optional)." },
+    "version":   { "type": "string", "maxLength": 32 },
+    "license":   { "type": "string", "description": "SPDX identifier, e.g. \"MIT\", \"GPL-3.0-or-later\". Must be an open-source license." },
+    "source":    { "type": "string", "format": "uri", "description": "Public source-code repository URL (required: open-source only)." },
+    "homepage":  { "type": "string", "format": "uri" },
+    "download":  { "type": "string", "format": "uri", "description": "Direct URL to the .nro or a .zip containing it." },
+    "filetype":  { "type": "string", "enum": ["nro", "zip"] },
+    "binary":    { "type": "string", "description": "Path to the .nro inside the zip (required when filetype=zip)." },
+    "install_path": { "type": "string", "description": "Where it installs on the SD card, e.g. \"/switch/<id>/\". Defaults to /switch/<id>/." },
+    "icon":      { "type": "string", "format": "uri", "description": "Square icon URL (256x256 recommended)." },
+    "screenshots": { "type": "array", "items": { "type": "string", "format": "uri" }, "maxItems": 8 },
+    "size":      { "type": "integer", "minimum": 0, "description": "Download size in bytes (optional)." },
+    "sha256":    { "type": "string", "pattern": "^[a-f0-9]{64}$", "description": "Download checksum (strongly recommended)." },
+    "requires_assets": { "type": "boolean", "description": "True if the user must supply their own legally-owned data (e.g. game WAD/ROM for an open-source engine/emulator). The store never ships that data." },
+    "platforms": { "type": "array", "items": { "type": "string", "enum": ["switch", "switch2", "emulator"] }, "description": "Where it's expected to run." },
+    "updated":   { "type": "string", "format": "date", "description": "Last update, YYYY-MM-DD." }
+  },
+  "allOf": [
+    {
+      "if":   { "properties": { "filetype": { "const": "zip" } } },
+      "then": { "required": ["binary"] }
+    }
+  ]
+}

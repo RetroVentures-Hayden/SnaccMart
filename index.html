@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Switch Homebrew Store</title>
+<meta name="description" content="A catalog of free, open-source Switch homebrew apps, emulators and ports.">
+<style>
+  :root{
+    --bg:#f4f6f9; --panel:#ffffff; --ink:#14202e; --muted:#5c6b7a;
+    --line:#e2e8f0; --accent:#2f80ed; --accent-ink:#ffffff;
+    --chip:#eef2f7; --badge:#e7f0fd; --badge-ink:#1d5fc4; --warn:#9a6b00; --warn-bg:#fff6e0;
+    --shadow:0 1px 3px rgba(20,32,46,.08),0 6px 20px rgba(20,32,46,.06);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0d131c; --panel:#141c27; --ink:#e7eef6; --muted:#9fb0c0;
+      --line:#243040; --accent:#4b9bff; --accent-ink:#06101d;
+      --chip:#1c2735; --badge:#15263d; --badge-ink:#7fb3ff; --warn:#ffcf6b; --warn-bg:#2a2410;
+      --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d131c; --panel:#141c27; --ink:#e7eef6; --muted:#9fb0c0;
+    --line:#243040; --accent:#4b9bff; --accent-ink:#06101d;
+    --chip:#1c2735; --badge:#15263d; --badge-ink:#7fb3ff; --warn:#ffcf6b; --warn-bg:#2a2410;
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  header{
+    position:sticky; top:0; z-index:5; background:var(--panel);
+    border-bottom:1px solid var(--line); box-shadow:var(--shadow);
+  }
+  .bar{max-width:1040px; margin:0 auto; padding:14px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  .brand{font-weight:700; font-size:18px; letter-spacing:.2px; display:flex; align-items:center; gap:9px}
+  .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),#7a4bff);flex:0 0 auto}
+  .grow{flex:1 1 auto}
+  input[type=search],select{
+    font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line);
+    border-radius:9px; padding:8px 11px; min-width:0;
+  }
+  input[type=search]{flex:1 1 220px}
+  button.theme{background:var(--chip); border:1px solid var(--line); color:var(--ink); border-radius:9px; padding:8px 11px; cursor:pointer}
+  main{max-width:1040px; margin:0 auto; padding:18px 16px 60px}
+  .note{font-size:13px; color:var(--muted); margin:2px 2px 16px}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:14px}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:15px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:9px;
+  }
+  .top{display:flex; gap:11px; align-items:flex-start}
+  .ic{width:46px;height:46px;border-radius:11px;background:var(--chip);flex:0 0 auto;object-fit:cover}
+  .name{font-weight:650; font-size:16px; margin:0}
+  .by{color:var(--muted); font-size:12.5px}
+  .badge{display:inline-block; font-size:11px; font-weight:600; color:var(--badge-ink); background:var(--badge); padding:2px 8px; border-radius:999px; text-transform:capitalize}
+  .desc{color:var(--ink); font-size:13.5px; margin:0}
+  .meta{display:flex; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:12px}
+  .assets{font-size:12px; color:var(--warn); background:var(--warn-bg); border-radius:8px; padding:5px 9px}
+  .row{display:flex; gap:9px; margin-top:4px}
+  a.btn{
+    text-decoration:none; font-weight:600; font-size:13px; padding:8px 12px; border-radius:9px; text-align:center;
+  }
+  a.dl{background:var(--accent); color:var(--accent-ink); flex:1 1 auto}
+  a.src{background:var(--chip); color:var(--ink); border:1px solid var(--line)}
+  .empty{color:var(--muted); text-align:center; padding:40px 0}
+  footer{max-width:1040px;margin:0 auto;padding:0 16px 40px;color:var(--muted);font-size:12.5px}
+  code{background:var(--chip); padding:1px 6px; border-radius:6px}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand"><span class="logo" aria-hidden="true"></span><span id="storeName">Switch Homebrew Store</span></div>
+    <span class="grow"></span>
+    <input id="q" type="search" placeholder="Search apps, authors…" aria-label="Search">
+    <select id="cat" aria-label="Category">
+      <option value="">All categories</option>
+      <option value="tool">Tools</option>
+      <option value="game">Games</option>
+      <option value="port">Ports</option>
+      <option value="emulator">Emulators</option>
+      <option value="media">Media</option>
+      <option value="system">System</option>
+      <option value="other">Other</option>
+    </select>
+    <button class="theme" id="theme" title="Toggle theme">◐</button>
+  </div>
+</header>
+
+<main>
+  <p class="note" id="sub">Free, open-source homebrew only — no ROMs, no commercial content, no CFW/exploits.</p>
+  <div class="grid" id="grid"></div>
+  <p class="empty" id="empty" hidden>No apps match your search.</p>
+</main>
+<footer>
+  Install at your own risk. Apps are open-source; verify checksums where provided.
+  Submit an app via a pull request — see <code>CONTRIBUTING.md</code>.
+</footer>
+
+<script>
+// Embedded fallback so the page renders even when opened from disk (file://),
+// where fetch() of the catalog is blocked. When served over http(s), the live
+// catalog/index.json is used instead.
+const FALLBACK = {
+  "name":"Switch Homebrew Store",
+  "apps":[
+    {"id":"switch-sysinfo","name":"SysInfo","author":"RetroVentures-Hayden","category":"tool",
+     "description":"System information & diagnostics viewer (firmware, battery, sensors, SD browser, titles).",
+     "version":"1.3.0","license":"MIT",
+     "source":"https://github.com/RetroVentures-Hayden/switch-sysinfo",
+     "download":"https://github.com/RetroVentures-Hayden/switch-sysinfo/releases/download/v1.3/switch-sysinfo.nro",
+     "platforms":["switch","emulator"]},
+    {"id":"example-engine-port","name":"Example Engine Port","author":"Author Name","category":"port",
+     "description":"An open-source reimplementation of a game engine. Bring your own legally-owned data files.",
+     "version":"0.0.0","license":"GPL-3.0-or-later","source":"https://example.org/author/engine-port",
+     "download":"https://example.org/","requires_assets":true},
+    {"id":"example-emulator","name":"Example Emulator","author":"Author Name","category":"emulator",
+     "description":"Open-source emulator for a retro system. Supply your own legally-dumped games.",
+     "version":"0.0.0","license":"GPL-2.0-or-later","source":"https://example.org/author/emulator",
+     "download":"https://example.org/","requires_assets":true}
+  ]
+};
+
+const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let APPS = [];
+
+function card(a){
+  const assets = a.requires_assets
+    ? `<div class="assets">Needs your own legally-owned data files.</div>` : "";
+  const ver = a.version ? `v${esc(a.version)}` : "";
+  const dl = a.download && !a.download.startsWith("https://example.org")
+    ? `<a class="btn dl" href="${esc(a.download)}" rel="noopener">Download</a>`
+    : `<a class="btn dl" href="#" aria-disabled="true" style="opacity:.5;pointer-events:none">Coming soon</a>`;
+  const icon = a.icon ? `<img class="ic" src="${esc(a.icon)}" alt="">` : `<span class="ic"></span>`;
+  return `<article class="card">
+    <div class="top">${icon}
+      <div style="min-width:0">
+        <p class="name">${esc(a.name)}</p>
+        <div class="by">by ${esc(a.author)}</div>
+      </div>
+      <span class="grow"></span>
+      <span class="badge">${esc(a.category)}</span>
+    </div>
+    <p class="desc">${esc(a.description||"")}</p>
+    ${assets}
+    <div class="meta">${ver?`<span>${ver}</span>`:""}${a.license?`<span>${esc(a.license)}</span>`:""}</div>
+    <div class="row">
+      ${dl}
+      ${a.source?`<a class="btn src" href="${esc(a.source)}" rel="noopener">Source</a>`:""}
+    </div>
+  </article>`;
+}
+
+function render(){
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const cat = document.getElementById("cat").value;
+  const list = APPS.filter(a=>{
+    if(cat && a.category!==cat) return false;
+    if(!q) return true;
+    return (a.name+" "+a.author+" "+(a.description||"")).toLowerCase().includes(q);
+  });
+  document.getElementById("grid").innerHTML = list.map(card).join("");
+  document.getElementById("empty").hidden = list.length>0;
+}
+
+function load(data){
+  APPS = (data.apps||[]).filter(a=>a && a.id && a.name);
+  if(data.name) document.getElementById("storeName").textContent = data.name;
+  render();
+}
+
+document.getElementById("q").addEventListener("input", render);
+document.getElementById("cat").addEventListener("change", render);
+document.getElementById("theme").addEventListener("click", ()=>{
+  const r=document.documentElement;
+  const cur=r.getAttribute("data-theme");
+  const next = cur==="dark" ? "light" : cur==="light" ? "dark"
+    : (matchMedia("(prefers-color-scheme:dark)").matches ? "light" : "dark");
+  r.setAttribute("data-theme", next);
+  try{localStorage.setItem("shs-theme",next)}catch(e){}
+});
+try{const t=localStorage.getItem("shs-theme"); if(t) document.documentElement.setAttribute("data-theme",t);}catch(e){}
+
+fetch("catalog/index.json",{cache:"no-store"})
+  .then(r=>{ if(!r.ok) throw 0; return r.json(); })
+  .then(load)
+  .catch(()=>load(FALLBACK));
+</script>
+</body>
+</html>
