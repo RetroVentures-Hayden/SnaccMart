@@ -23,6 +23,10 @@ Tools · Games · Open-source emulators · Engine ports — browsable on the web
 >
 > An emulator is welcome; the games that run on it are **not** bundled — you bring your own legally-owned data. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
+> ⚠️ **Disclaimer:** The software needs testing, and it might not work properly!
+> If that's the case, please [create an Issue on the repo](https://github.com/RetroVentures-Hayden/SnaccMart/issues/new)
+> and I will fix it.
+
 ---
 
 ## What's in the box
