@@ -65,7 +65,7 @@
       "description": "Back up and restore your game save data.",
       "version": "latest",
       "license": "GPL-3.0-or-later",
-      "source": "https://github.com/FlagBrew/Checkpoint",
+      "source": "https://github.com/BernardoGiordano/Checkpoint",
       "download": "https://github.com/BernardoGiordano/Checkpoint/releases/download/v5.3.0/Checkpoint.nro",
       "filetype": "nro",
       "platforms": [
