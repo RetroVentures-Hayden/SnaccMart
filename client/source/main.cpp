@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <strings.h>
 #include <cstdint>
+#include <zlib.h>
 // Default live-catalog URL. Override at runtime by placing a URL in
 // sdmc:/switch/homebrew-store/catalog_url.txt (e.g. point at a local mirror).
 #define DEFAULT_CATALOG_URL "https://raw.githubusercontent.com/RetroVentures-Hayden/SnaccMart/main/catalog/catalog.tsv"
@@ -47,6 +48,8 @@ struct App {
     char source[256]  = "";
     bool assets       = false;
     char sha256[72]   = "";
+    char filetype[8]  = "nro"; // "nro" or "zip"
+    char binary[256]  = "";    // path to the .nro inside a zip (informational)
 };
 
 constexpr int MAX_APPS = 512;
@@ -91,6 +94,9 @@ bool loadCatalogPath(const char* path) {
         char flag[4]; field(line, 9, flag, sizeof(flag));
         a.assets = (flag[0] == '1');
         field(line, 10, a.sha256, sizeof(a.sha256));
+        field(line, 11, a.filetype, sizeof(a.filetype));
+        if (!a.filetype[0]) snprintf(a.filetype, sizeof(a.filetype), "nro");
+        field(line, 12, a.binary, sizeof(a.binary));
         if (a.id[0]) ++appCount;
     }
     fclose(f);
@@ -103,6 +109,29 @@ bool g_online = false;
 #if STORE_NETWORK
 size_t writeToFile(void* ptr, size_t sz, size_t nm, void* f) {
     return fwrite(ptr, sz, nm, static_cast<FILE*>(f));
+}
+
+// HTTPS GET to a file. Returns true on a clean download.
+bool curlDownload(const char* url, const char* outpath) {
+    FILE* f = fopen(outpath, "wb");
+    if (!f) return false;
+    CURL* c = curl_easy_init();
+    if (!c) { fclose(f); remove(outpath); return false; }
+    curl_easy_setopt(c, CURLOPT_URL, url);
+    curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, writeToFile);
+    curl_easy_setopt(c, CURLOPT_WRITEDATA, f);
+    curl_easy_setopt(c, CURLOPT_CAINFO, "romfs:/cacert.pem");
+    curl_easy_setopt(c, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(c, CURLOPT_SSL_VERIFYHOST, 2L);
+    curl_easy_setopt(c, CURLOPT_USERAGENT, "SnaccMart/0.2");
+    curl_easy_setopt(c, CURLOPT_FAILONERROR, 1L);
+    curl_easy_setopt(c, CURLOPT_TIMEOUT, 300L);
+    CURLcode rc = curl_easy_perform(c);
+    curl_easy_cleanup(c);
+    fclose(f);
+    if (rc != CURLE_OK) { remove(outpath); return false; }
+    return true;
 }
 
 // Catalog URL: a user-provided override on the SD card, else the default.
@@ -227,9 +256,146 @@ bool sha256File(const char* path, char hexout[65]) {
     return true;
 }
 
-// Download the selected app's .nro over HTTPS and install it to
-// sdmc:/switch/<id>/<id>.nro, verifying sha256 when the catalog provides one.
-// Blocking; updates g_status with the result.
+// --- Minimal ZIP extractor (zlib raw inflate) ---
+inline uint16_t rd16(const uint8_t* p) { return uint16_t(p[0]) | (uint16_t(p[1]) << 8); }
+inline uint32_t rd32(const uint8_t* p) {
+    return uint32_t(p[0]) | (uint32_t(p[1]) << 8) | (uint32_t(p[2]) << 16) | (uint32_t(p[3]) << 24);
+}
+
+// Reject absolute paths, backslashes, and any ".." component (path traversal).
+bool zipNameSafe(const char* n) {
+    if (!n[0] || n[0] == '/' || n[0] == '\\') return false;
+    if (strchr(n, '\\')) return false;
+    const char* p = n;
+    while (p) {
+        const char* slash = strchr(p, '/');
+        size_t len = slash ? size_t(slash - p) : strlen(p);
+        if (len == 2 && p[0] == '.' && p[1] == '.') return false;
+        if (!slash) break;
+        p = slash + 1;
+    }
+    return true;
+}
+
+void makeParentDirs(const char* fullpath) {
+    char tmp[1200];
+    snprintf(tmp, sizeof(tmp), "%s", fullpath);
+    for (char* p = tmp + 1; *p; ++p) {
+        if (*p == '/') { *p = '\0'; mkdir(tmp, 0777); *p = '/'; }
+    }
+}
+
+bool zipWriteEntry(FILE* z, long dataOff, uint32_t compSize, uint16_t method, const char* outpath) {
+    size_t L = strlen(outpath);
+    makeParentDirs(outpath);
+    if (L && outpath[L-1] == '/') { mkdir(outpath, 0777); return true; } // directory entry
+
+    FILE* out = fopen(outpath, "wb");
+    if (!out) return false;
+    if (fseek(z, dataOff, SEEK_SET) != 0) { fclose(out); remove(outpath); return false; }
+
+    bool ok = true;
+    if (method == 0) { // stored
+        uint8_t buf[16384];
+        uint32_t left = compSize;
+        while (left) {
+            size_t take = left < sizeof(buf) ? left : sizeof(buf);
+            size_t r = fread(buf, 1, take, z);
+            if (r == 0) { ok = false; break; }
+            fwrite(buf, 1, r, out);
+            left -= uint32_t(r);
+        }
+    } else if (method == 8) { // deflate (raw)
+        z_stream s; memset(&s, 0, sizeof(s));
+        if (inflateInit2(&s, -MAX_WBITS) != Z_OK) { fclose(out); remove(outpath); return false; }
+        uint8_t in[16384], o[16384];
+        uint32_t left = compSize;
+        int ret = Z_OK;
+        do {
+            if (s.avail_in == 0 && left > 0) {
+                size_t take = left < sizeof(in) ? left : sizeof(in);
+                size_t r = fread(in, 1, take, z);
+                if (r == 0) { ok = false; break; }
+                left -= uint32_t(r);
+                s.next_in = in; s.avail_in = uInt(r);
+            }
+            s.next_out = o; s.avail_out = sizeof(o);
+            ret = inflate(&s, Z_NO_FLUSH);
+            if (ret == Z_NEED_DICT || ret == Z_DATA_ERROR || ret == Z_MEM_ERROR || ret == Z_STREAM_ERROR) { ok = false; break; }
+            size_t have = sizeof(o) - s.avail_out;
+            if (have) fwrite(o, 1, have, out);
+        } while (ret != Z_STREAM_END);
+        inflateEnd(&s);
+    } else {
+        ok = false; // unsupported compression method
+    }
+    fclose(out);
+    if (!ok) remove(outpath);
+    return ok;
+}
+
+// Extract a zip to outdir. Returns the number of files written, or -1 on error.
+int extractZip(const char* zippath, const char* outdir) {
+    FILE* z = fopen(zippath, "rb");
+    if (!z) return -1;
+    fseek(z, 0, SEEK_END);
+    long fsize = ftell(z);
+    if (fsize < 22) { fclose(z); return -1; }
+
+    long scan = fsize < 66000 ? fsize : 66000;
+    uint8_t* tail = static_cast<uint8_t*>(malloc(scan));
+    if (!tail) { fclose(z); return -1; }
+    fseek(z, fsize - scan, SEEK_SET);
+    if (fread(tail, 1, scan, z) != size_t(scan)) { free(tail); fclose(z); return -1; }
+
+    long eocd = -1;
+    for (long i = scan - 22; i >= 0; --i) { if (rd32(tail + i) == 0x06054b50u) { eocd = i; break; } }
+    if (eocd < 0) { free(tail); fclose(z); return -1; }
+    uint16_t total = rd16(tail + eocd + 10);
+    uint32_t cdoff = rd32(tail + eocd + 16);
+    free(tail);
+
+    int written = 0;
+    if (fseek(z, cdoff, SEEK_SET) != 0) { fclose(z); return -1; }
+    for (uint16_t i = 0; i < total; ++i) {
+        uint8_t hdr[46];
+        if (fread(hdr, 1, 46, z) != 46 || rd32(hdr) != 0x02014b50u) break;
+        uint16_t method   = rd16(hdr + 10);
+        uint32_t compSize = rd32(hdr + 20);
+        uint16_t nameLen  = rd16(hdr + 28);
+        uint16_t extraLen = rd16(hdr + 30);
+        uint16_t cmtLen   = rd16(hdr + 32);
+        uint32_t lho      = rd32(hdr + 42);
+
+        char name[1024];
+        uint16_t nl = nameLen < sizeof(name) - 1 ? nameLen : sizeof(name) - 1;
+        if (fread(name, 1, nl, z) != nl) break;
+        name[nl] = '\0';
+        if (nl < nameLen) fseek(z, nameLen - nl, SEEK_CUR);
+        fseek(z, extraLen + cmtLen, SEEK_CUR);
+        long nextCd = ftell(z);
+
+        // Local header -> data offset.
+        uint8_t lh[30];
+        if (fseek(z, lho, SEEK_SET) == 0 && fread(lh, 1, 30, z) == 30 && rd32(lh) == 0x04034b50u) {
+            uint16_t lNameLen  = rd16(lh + 26);
+            uint16_t lExtraLen = rd16(lh + 28);
+            long dataOff = long(lho) + 30 + lNameLen + lExtraLen;
+            if (zipNameSafe(name)) {
+                char outp[1200];
+                snprintf(outp, sizeof(outp), "%s/%s", outdir, name);
+                if (zipWriteEntry(z, dataOff, compSize, method, outp)) ++written;
+            }
+        }
+        fseek(z, nextCd, SEEK_SET);
+    }
+    fclose(z);
+    return written;
+}
+
+// Download the selected app and install it to sdmc:/switch/<id>/, verifying
+// sha256 when the catalog provides one. Handles .nro (direct) and .zip
+// (extracted). Blocking; updates g_status with the result.
 bool installApp(const App& a) {
     if (!a.download[0]) { snprintf(g_status, sizeof(g_status), "No download URL."); return false; }
 
@@ -238,50 +404,40 @@ bool installApp(const App& a) {
     mkdir("sdmc:/switch", 0777);
     mkdir(dir, 0777);
 
-    char out[512];
-    snprintf(out, sizeof(out), "%s/%s.nro", dir, a.id);
+    mkdir("sdmc:/switch/homebrew-store", 0777);
+    bool isZip = (strcasecmp(a.filetype, "zip") == 0);
 
-    FILE* f = fopen(out, "wb");
-    if (!f) { snprintf(g_status, sizeof(g_status), "Error: cannot write to SD card."); return false; }
+    // Download target: the .nro directly, or a temp .zip to extract.
+    char dl[640];
+    if (isZip) snprintf(dl, sizeof(dl), "sdmc:/switch/homebrew-store/%s.zip", a.id);
+    else       snprintf(dl, sizeof(dl), "%s/%s.nro", dir, a.id);
 
-    CURL* c = curl_easy_init();
-    if (!c) { fclose(f); remove(out); snprintf(g_status, sizeof(g_status), "Error: curl init failed."); return false; }
-    curl_easy_setopt(c, CURLOPT_URL, a.download);
-    curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, writeToFile);
-    curl_easy_setopt(c, CURLOPT_WRITEDATA, f);
-    curl_easy_setopt(c, CURLOPT_CAINFO, "romfs:/cacert.pem"); // bundled CA store
-    curl_easy_setopt(c, CURLOPT_SSL_VERIFYPEER, 1L);
-    curl_easy_setopt(c, CURLOPT_SSL_VERIFYHOST, 2L);
-    curl_easy_setopt(c, CURLOPT_USERAGENT, "SnaccMart/0.2");
-    curl_easy_setopt(c, CURLOPT_FAILONERROR, 1L);
-    curl_easy_setopt(c, CURLOPT_TIMEOUT, 120L);
-
-    CURLcode rc = curl_easy_perform(c);
-    curl_easy_cleanup(c);
-    fclose(f);
-
-    if (rc != CURLE_OK) {
-        remove(out);
-        snprintf(g_status, sizeof(g_status), "Download failed: %s", curl_easy_strerror(rc));
+    if (!curlDownload(a.download, dl)) {
+        snprintf(g_status, sizeof(g_status), "Download failed.");
         return false;
     }
+
+    // Verify the downloaded file (zip or nro) against the catalog checksum.
     if (a.sha256[0]) {
         char got[65];
-        if (!sha256File(out, got)) {
-            remove(out);
-            snprintf(g_status, sizeof(g_status), "Installed but could not hash the file.");
-            return false;
-        }
-        if (strcasecmp(got, a.sha256) != 0) {
-            remove(out);
+        if (!sha256File(dl, got) || strcasecmp(got, a.sha256) != 0) {
+            remove(dl);
             snprintf(g_status, sizeof(g_status), "CHECKSUM MISMATCH - file removed.");
             return false;
         }
-        snprintf(g_status, sizeof(g_status), "Installed + verified: %s", out);
+    }
+
+    if (isZip) {
+        int n = extractZip(dl, dir);
+        remove(dl);
+        if (n < 0) { snprintf(g_status, sizeof(g_status), "Extract failed (bad zip)."); return false; }
+        snprintf(g_status, sizeof(g_status), "Installed%s: %d file(s) to %s",
+                 a.sha256[0] ? " + verified" : " (unverified)", n, dir);
         return true;
     }
-    snprintf(g_status, sizeof(g_status), "Installed (no checksum on file): %s", out);
+
+    snprintf(g_status, sizeof(g_status), "Installed%s: %s",
+             a.sha256[0] ? " + verified" : " (no checksum)", dl);
     return true;
 }
 #endif

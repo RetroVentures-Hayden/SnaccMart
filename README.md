@@ -101,8 +101,8 @@ cd client && make                      # -> client/homebrew-store.nro
 | Version | Status |
 |---------|--------|
 | v0.1 | **Browse** the catalog + per-app detail view ✅ |
-| v0.2 | **Download + install to SD** + **live catalog fetch** over HTTPS ✅ (compiles; on-device test pending) |
-| later | `.zip` package support |
+| v0.2 | **Download + install to SD**, **live catalog fetch**, **sha256 verify**, **.zip extract** over HTTPS ✅ (compiles; on-device test pending) |
+| later | richer UI · screenshots · categories in the client |
 
 The networked client (built by the **`client-net`** workflow, which adds the
 `switch-curl` portlib + CA bundle) fetches the catalog live from
@@ -129,10 +129,12 @@ This is best-effort human review, not a guarantee. Install at your own risk.
 
 ## Self-hosting / mirroring
 
-The catalog is plain static JSON and the site is static HTML, so an
-**auto-updating mirror** (e.g. on a home server such as ZimaOS) is
-straightforward to add later — point a sync at `catalog/` and serve it. Nothing
-in the design assumes a single origin.
+`mirror/` is a ready-to-run container that keeps a **live copy of the catalog**
+on your own server (e.g. ZimaOS): it clones the repo, serves it over HTTP, and
+`git pull`s on an interval. Point the on-console client at it by writing the
+mirror's `catalog.tsv` URL to `sdmc:/switch/homebrew-store/catalog_url.txt`.
+See [`mirror/README.md`](mirror/README.md). The catalog is plain static JSON and
+the site static HTML, so nothing in the design assumes a single origin.
 
 ## Roadmap
 
@@ -144,8 +146,8 @@ in the design assumes a single origin.
 - [x] On-console download + install to SD (v0.2)
 - [x] Live catalog fetch over the network (with SD override for mirrors)
 - [x] `sha256` verification on install (rejects tampered downloads)
-- [ ] `.zip` package support (extract to install path)
-- [ ] Auto-updating self-host mirror
+- [x] `.zip` package support (extract to install path, with path-traversal guard)
+- [x] Auto-updating self-host mirror (`mirror/`)
 
 ## License
 
