@@ -102,7 +102,7 @@ cd client && make                      # -> client/homebrew-store.nro
 |---------|--------|
 | v0.1 | **Browse** the catalog + per-app detail view ✅ |
 | v0.2 | **Download + install to SD** + **live catalog fetch** over HTTPS ✅ (compiles; on-device test pending) |
-| later | `sha256` verification · `.zip` support |
+| later | `.zip` package support |
 
 The networked client (built by the **`client-net`** workflow, which adds the
 `switch-curl` portlib + CA bundle) fetches the catalog live from
@@ -143,7 +143,7 @@ in the design assumes a single origin.
 - [x] On-console client — browse
 - [x] On-console download + install to SD (v0.2)
 - [x] Live catalog fetch over the network (with SD override for mirrors)
-- [ ] `sha256` verification on install
+- [x] `sha256` verification on install (rejects tampered downloads)
 - [ ] `.zip` package support (extract to install path)
 - [ ] Auto-updating self-host mirror
 
