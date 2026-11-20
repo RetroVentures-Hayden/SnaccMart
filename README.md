@@ -40,11 +40,30 @@ against the schema). Every app must be open-source with a public `source` repo.
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full rules and the safety
 review each submission gets.
 
+## On-console client
+
+`client/` is a libnx app (`homebrew-store.nro`) that browses the catalog on the
+Switch itself. v0.1 is **browse-only**: the catalog is converted from
+`catalog/index.json` into `client/romfs/catalog.tsv` at build time
+(`scripts/gen_romfs_catalog.py`) and bundled via romfs, so the app needs no JSON
+parser or network. Live fetch + download/install is the next milestone.
+
+Build it with devkitPro:
+
+```bash
+python3 scripts/gen_romfs_catalog.py   # refresh the bundled catalog
+cd client && make                      # -> client/homebrew-store.nro
+```
+
+(CI does both automatically — see `.github/workflows/client.yml`.)
+
 ## Roadmap
 
 - [x] Index format + schema
 - [x] Submission policy + safety review rules
 - [x] Web catalog front-end
-- [ ] JSON-schema validation in CI (reject malformed PRs automatically)
-- [ ] On-console client app (libnx): browse + download + install to SD
+- [x] JSON-schema validation in CI (rejects malformed PRs)
+- [x] On-console client (libnx): **browse** the catalog
+- [ ] On-console **download + install to SD** (needs `switch-curl`; next milestone)
 - [ ] `sha256` verification on install
+- [ ] Auto-updating mirror for self-hosting (e.g. ZimaOS) — static JSON makes this trivial later

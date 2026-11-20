@@ -18,41 +18,6 @@
       "install_path": "/switch/switch-sysinfo/",
       "platforms": ["switch", "emulator"],
       "updated": "2026-11-20"
-    },
-
-    {
-      "_comment": "TEMPLATE — copy this for an open-source game/engine port. Ships the OPEN-SOURCE app only; the user supplies their own legally-owned data.",
-      "id": "example-engine-port",
-      "name": "Example Engine Port",
-      "author": "Author Name",
-      "category": "port",
-      "description": "An open-source reimplementation of a game engine. Bring your own legally-owned data files.",
-      "version": "0.0.0",
-      "license": "GPL-3.0-or-later",
-      "source": "https://example.org/author/engine-port",
-      "download": "https://example.org/author/engine-port/releases/download/v0/engine-port.zip",
-      "filetype": "zip",
-      "binary": "engine-port/engine-port.nro",
-      "requires_assets": true,
-      "platforms": ["switch", "emulator"],
-      "updated": "2026-01-01"
-    },
-
-    {
-      "_comment": "TEMPLATE — copy this for an open-source emulator. The emulator is open source; the store never distributes ROMs/BIOS.",
-      "id": "example-emulator",
-      "name": "Example Emulator",
-      "author": "Author Name",
-      "category": "emulator",
-      "description": "Open-source emulator for a retro system. Supply your own legally-dumped games.",
-      "version": "0.0.0",
-      "license": "GPL-2.0-or-later",
-      "source": "https://example.org/author/emulator",
-      "download": "https://example.org/author/emulator/releases/download/v0/emulator.nro",
-      "filetype": "nro",
-      "requires_assets": true,
-      "platforms": ["switch"],
-      "updated": "2026-01-01"
     }
   ]
 }

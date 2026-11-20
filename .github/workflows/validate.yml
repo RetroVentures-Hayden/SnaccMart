@@ -1,0 +1,25 @@
+name: validate
+
+# Validates the catalog JSON against the package schema on every push/PR that
+# touches it, so malformed or policy-violating entries are rejected before merge.
+
+on:
+  push:
+    branches: [ "**" ]
+    paths: [ "catalog/**", "schema/**", "scripts/validate.py", ".github/workflows/validate.yml" ]
+  pull_request:
+    paths: [ "catalog/**", "schema/**", "scripts/validate.py" ]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install validator deps
+        run: pip install jsonschema
+      - name: Validate catalog
+        run: python3 scripts/validate.py

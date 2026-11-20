@@ -1,0 +1,39 @@
+name: client
+
+# Builds the on-console client (homebrew-store.nro): regenerates the bundled
+# romfs catalog from catalog/index.json, then builds with devkitPro.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - "client/**"
+      - "catalog/index.json"
+      - "scripts/gen_romfs_catalog.py"
+      - ".github/workflows/client.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate romfs catalog
+        run: |
+          command -v python3 >/dev/null 2>&1 || (apt-get update && apt-get install -y --no-install-recommends python3)
+          python3 scripts/gen_romfs_catalog.py
+
+      - name: Build client
+        run: |
+          export DEVKITPRO=/opt/devkitpro
+          cd client && make
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-store-nro
+          path: client/*.nro
+          if-no-files-found: error

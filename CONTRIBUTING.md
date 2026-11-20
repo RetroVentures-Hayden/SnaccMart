@@ -50,7 +50,15 @@ risk; checksums and the open-source requirement are the main protections.
 ## How to add an app
 
 1. Fork the repo.
-2. Add your object to the `apps` array in `catalog/index.json` (copy a template).
-3. Fill every required field; validate against `schema/package.schema.json`.
-4. Open a pull request. CI validates the JSON; a maintainer runs the safety
-   review above before merging.
+2. Copy an object from `catalog/example-entry.json` into the `apps` array in
+   `catalog/index.json`.
+3. Fill every required field; it is validated against `schema/package.schema.json`.
+4. Open a pull request. CI validates the JSON automatically (`scripts/validate.py`);
+   a maintainer runs the safety review above before merging.
+
+Validate locally before opening the PR:
+
+```bash
+pip install jsonschema
+python3 scripts/validate.py
+```

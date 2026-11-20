@@ -1,0 +1,36 @@
+{
+  "_note": "Copy ONE of these objects into catalog/index.json's \"apps\" array and fill it in. This file is NOT loaded by the store; it is a schema-valid template for contributors. Remove this _note line from your copy.",
+  "examples": [
+    {
+      "id": "example-engine-port",
+      "name": "Example Engine Port",
+      "author": "Author Name",
+      "category": "port",
+      "description": "An open-source reimplementation of a game engine. Bring your own legally-owned data files.",
+      "version": "1.0.0",
+      "license": "GPL-3.0-or-later",
+      "source": "https://github.com/author/engine-port",
+      "download": "https://github.com/author/engine-port/releases/download/v1.0.0/engine-port.zip",
+      "filetype": "zip",
+      "binary": "engine-port/engine-port.nro",
+      "requires_assets": true,
+      "platforms": ["switch", "emulator"],
+      "updated": "2026-11-20"
+    },
+    {
+      "id": "example-emulator",
+      "name": "Example Emulator",
+      "author": "Author Name",
+      "category": "emulator",
+      "description": "Open-source emulator for a retro system. Supply your own legally-dumped games.",
+      "version": "1.0.0",
+      "license": "GPL-2.0-or-later",
+      "source": "https://github.com/author/emulator",
+      "download": "https://github.com/author/emulator/releases/download/v1.0.0/emulator.nro",
+      "filetype": "nro",
+      "requires_assets": true,
+      "platforms": ["switch"],
+      "updated": "2026-11-20"
+    }
+  ]
+}
