@@ -1,11 +1,13 @@
-// homebrew-store — on-console client (v0.1) for the Switch Homebrew Store.
+// homebrew-store — on-console client (v0.2) for the Switch Homebrew Store.
 //
-// Reads a catalog bundled via romfs (romfs:/catalog.tsv, generated from
-// catalog/index.json at build time) and lets you browse apps and view details.
+// Reads the catalog (fetched live over HTTPS when built networked, else from the
+// romfs copy bundled at build time) and lets you browse apps, view details, and
+// — in the networked build — download + sha256-verify + install to the SD card.
 //
-// v0.1 is browse-only. Live network fetch + download/install to the SD card is
-// the next milestone (it will add the switch-curl portlib). This app itself is
-// ordinary homebrew: it runs where unsigned NROs are already permitted.
+// Two build flavours (see the Makefile's STORE_NETWORK): the default is
+// browse-only and dependency-free; STORE_NETWORK=1 adds switch-curl for fetch
+// and install. Either way this is ordinary homebrew: it runs where unsigned
+// NROs are already permitted.
 //
 // License: MIT.
 
@@ -91,7 +93,7 @@ bool loadCatalogPath(const char* path) {
     appCount = 0;
     FILE* f = fopen(path, "rb");
     if (!f) return false;
-    char line[1200];
+    char line[2048];
     while (fgets(line, sizeof(line), f) && appCount < MAX_APPS) {
         // strip trailing newline
         size_t L = strlen(line);
@@ -498,7 +500,7 @@ bool installApp(const App& a) {
 #endif
 
 void header() {
-    printf("%s%s  Switch Homebrew Store%s  %sv0.1%s\n", BOLD, CYAN, RESET, DIM, RESET);
+    printf("%s%s  Switch Homebrew Store%s  %sv0.2%s\n", BOLD, CYAN, RESET, DIM, RESET);
     for (int i = 0; i < 80; ++i) putchar('-');
     printf("\n\n");
 }

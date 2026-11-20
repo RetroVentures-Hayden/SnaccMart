@@ -9,3 +9,5 @@ client/*.map
 # generated at build time from catalog/index.json
 client/romfs/catalog.tsv
 client/romfs/cacert.pem
+__pycache__/
+*.pyc

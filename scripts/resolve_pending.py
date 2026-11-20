@@ -60,17 +60,34 @@ def repo_from_source(url):
     return (m.group(1), m.group(2)) if m else (None, None)
 
 
+# Tokens that mark a non-Switch build, so a single zip carrying one is NOT
+# auto-picked (this is what caused the PS4 / Win64 mis-picks).
+WRONG_PLATFORM = ("ps4", "ps5", "psvita", "vita", "win64", "win32", "windows",
+                  "-win", "_win", "linux", "macos", "-mac", "osx", "android",
+                  "3ds", "wiiu", "wii-u")
+
+
 def pick_asset(app_id, assets):
     nros = [a for a in assets if a["name"].lower().endswith(".nro")]
-    zips = [a for a in assets if a["name"].lower().endswith(".zip")]
+    # .nro is a Switch-only format, so any .nro is safe to pick.
     for a in nros:
         if a["name"].lower() == f"{app_id}.nro":
             return a, "exact"
     if len(nros) == 1:
         return nros[0], "nro"
-    if not nros and len(zips) == 1:
+    if len(nros) > 1:
+        return None, "ambiguous-nro"
+
+    zips = [a for a in assets if a["name"].lower().endswith(".zip")]
+    if len(zips) > 1:
+        sw = [z for z in zips if "switch" in z["name"].lower() or "nx" in z["name"].lower()]
+        return (sw[0], "zip-switch") if len(sw) == 1 else (None, "ambiguous-zip")
+    if len(zips) == 1:
+        name = zips[0]["name"].lower()
+        if any(t in name for t in WRONG_PLATFORM):
+            return None, "wrong-platform-zip"   # e.g. a PS4/Win64-only release
         return zips[0], "zip"
-    return None, ("ambiguous" if (nros or zips) else "none")
+    return None, "none"
 
 
 def sha256_url(url):

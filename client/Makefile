@@ -19,7 +19,7 @@ ROMFS       := romfs
 
 APP_TITLE   := Homebrew Store
 APP_AUTHOR  := RetroVentures-Hayden
-APP_VERSION := 0.1.0
+APP_VERSION := 0.2.0
 
 #---------------------------------------------------------------------------------
 ARCH    := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
