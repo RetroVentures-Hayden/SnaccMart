@@ -111,9 +111,10 @@ cd client && make                      # -> client/homebrew-store.nro
 The networked client (built by the **`client-net`** workflow, which adds the
 `switch-curl` portlib + CA bundle) fetches the catalog live from
 `catalog/catalog.tsv` at startup and falls back to the bundled copy when offline.
-To point it at a mirror (e.g. a home server), drop a URL in
-`sdmc:/switch/homebrew-store/catalog_url.txt`. The default `client` build stays
-dependency-free (browse-only) so it's always green.
+You can override the source with an **`https://`** URL in
+`sdmc:/switch/homebrew-store/catalog_url.txt` (non-HTTPS overrides are ignored —
+see below). The default `client` build stays dependency-free (browse-only) so
+it's always green.
 
 ## Safety & malware policy
 
@@ -131,14 +132,15 @@ promise:
 
 This is best-effort human review, not a guarantee. Install at your own risk.
 
-## Self-hosting / mirroring
+## Self-hosting the catalog
 
-`mirror/` is a ready-to-run container that keeps a **live copy of the catalog**
-on your own server (e.g. ZimaOS): it clones the repo, serves it over HTTP, and
-`git pull`s on an interval. Point the on-console client at it by writing the
-mirror's `catalog.tsv` URL to `sdmc:/switch/homebrew-store/catalog_url.txt`.
-See [`mirror/README.md`](mirror/README.md). The catalog is plain static JSON and
-the site static HTML, so nothing in the design assumes a single origin.
+The catalog is plain static JSON, so you can serve your own copy. The on-console
+client only accepts an **HTTPS** catalog URL (via
+`sdmc:/switch/homebrew-store/catalog_url.txt`); a plain-HTTP source is ignored
+and it falls back to the default. This is deliberate: an unauthenticated catalog
+can be swapped in transit — `sha256` hashes included, since they travel inside
+the catalog — so self-hosting must be behind TLS to be safe. (An earlier
+plain-HTTP mirror container was removed for this reason.)
 
 ## Roadmap
 
@@ -148,10 +150,9 @@ the site static HTML, so nothing in the design assumes a single origin.
 - [x] CI schema validation
 - [x] On-console client — browse
 - [x] On-console download + install to SD (v0.2)
-- [x] Live catalog fetch over the network (with SD override for mirrors)
+- [x] Live catalog fetch over the network (HTTPS only)
 - [x] `sha256` verification on install (rejects tampered downloads)
-- [x] `.zip` package support (extract to install path, with path-traversal guard)
-- [x] Auto-updating self-host mirror (`mirror/`)
+- [x] `.zip` package support (extract to install path, CRC-checked, traversal-guarded)
 
 ## License
 

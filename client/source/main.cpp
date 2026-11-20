@@ -149,7 +149,9 @@ bool curlDownload(const char* url, const char* outpath) {
     return true;
 }
 
-// Catalog URL: a user-provided override on the SD card, else the default.
+// Catalog URL: an optional override on the SD card, else the default.
+// HTTPS only — an unauthenticated (http://) catalog can be swapped in transit,
+// sha256 hashes included, so a non-https override is ignored.
 void getCatalogUrl(char* url, size_t cap) {
     FILE* cf = fopen("sdmc:/switch/homebrew-store/catalog_url.txt", "rb");
     if (cf) {
@@ -160,7 +162,7 @@ void getCatalogUrl(char* url, size_t cap) {
             url[0] = '\0';
         }
         fclose(cf);
-        if (url[0]) return;
+        if (url[0] && strncasecmp(url, "https://", 8) == 0) return; // accept https overrides only
     }
     snprintf(url, cap, "%s", DEFAULT_CATALOG_URL);
 }
