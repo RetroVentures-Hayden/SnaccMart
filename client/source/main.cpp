@@ -428,8 +428,10 @@ int extractZip(const char* zippath, const char* outdir) {
                 if (zipWriteEntry(z, dataOff, compSize, method, expCrc, outp)) {
                     ++written;
                     size_t ol = strlen(outp);
-                    if (ncreated < TRACK_CAP && ol && outp[ol-1] != '/')
-                        created[ncreated++] = strdup(outp); // files only (not dir markers)
+                    if (ncreated < TRACK_CAP && ol && outp[ol-1] != '/') {
+                        char* dup = static_cast<char*>(malloc(ol + 1)); // track files only
+                        if (dup) { memcpy(dup, outp, ol + 1); created[ncreated++] = dup; }
+                    }
                 } else {
                     failed = true;
                 }
