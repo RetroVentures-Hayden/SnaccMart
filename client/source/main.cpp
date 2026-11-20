@@ -307,26 +307,6 @@ void makeParentDirs(const char* fullpath) {
     }
 }
 
-// Recursively delete a directory tree (used to roll back a failed extraction).
-void rmrf(const char* path) {
-    DIR* d = opendir(path);
-    if (d) {
-        struct dirent* e;
-        while ((e = readdir(d)) != nullptr) {
-            if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
-            char p[1200];
-            snprintf(p, sizeof(p), "%s/%s", path, e->d_name);
-            struct stat st{};
-            if (stat(p, &st) == 0 && S_ISDIR(st.st_mode)) rmrf(p);
-            else remove(p);
-        }
-        closedir(d);
-        rmdir(path);
-    } else {
-        remove(path);
-    }
-}
-
 // Write one zip entry, verifying its CRC-32 and catching write errors.
 bool zipWriteEntry(FILE* z, long dataOff, uint32_t compSize, uint16_t method,
                    uint32_t expectedCrc, const char* outpath) {
@@ -408,8 +388,14 @@ int extractZip(const char* zippath, const char* outdir) {
     uint32_t cdoff = rd32(tail + eocd + 16);
     free(tail);
 
+    // Track the files we create so a failure removes ONLY those — never a broad
+    // delete, since extraction may target the SD root.
+    constexpr int TRACK_CAP = 8192;
+    char* created[TRACK_CAP];
+    int ncreated = 0;
     int written = 0;
     bool failed = false;
+
     if (fseek(z, cdoff, SEEK_SET) != 0) { fclose(z); return -1; }
     for (uint16_t i = 0; i < total && !failed; ++i) {
         uint8_t hdr[46];
@@ -439,14 +425,25 @@ int extractZip(const char* zippath, const char* outdir) {
             if (zipNameSafe(name)) {
                 char outp[1200];
                 snprintf(outp, sizeof(outp), "%s/%s", outdir, name);
-                if (zipWriteEntry(z, dataOff, compSize, method, expCrc, outp)) ++written;
-                else failed = true;
+                if (zipWriteEntry(z, dataOff, compSize, method, expCrc, outp)) {
+                    ++written;
+                    size_t ol = strlen(outp);
+                    if (ncreated < TRACK_CAP && ol && outp[ol-1] != '/')
+                        created[ncreated++] = strdup(outp); // files only (not dir markers)
+                } else {
+                    failed = true;
+                }
             }
         }
         fseek(z, nextCd, SEEK_SET);
     }
     fclose(z);
-    if (failed) { rmrf(outdir); return -1; } // roll back a partial extraction
+
+    if (failed) {
+        for (int i = 0; i < ncreated; ++i) { remove(created[i]); free(created[i]); }
+        return -1;
+    }
+    for (int i = 0; i < ncreated; ++i) free(created[i]);
     return written;
 }
 
@@ -459,15 +456,17 @@ bool installApp(const App& a) {
     char dir[256];
     snprintf(dir, sizeof(dir), "sdmc:/switch/%s", a.id);
     mkdir("sdmc:/switch", 0777);
-    mkdir(dir, 0777);
-
     mkdir("sdmc:/switch/homebrew-store", 0777);
     bool isZip = (strcasecmp(a.filetype, "zip") == 0);
 
-    // Download target: the .nro directly, or a temp .zip to extract.
+    // Download target: a temp .zip to extract, or the .nro into /switch/<id>/.
     char dl[640];
-    if (isZip) snprintf(dl, sizeof(dl), "sdmc:/switch/homebrew-store/%s.zip", a.id);
-    else       snprintf(dl, sizeof(dl), "%s/%s.nro", dir, a.id);
+    if (isZip) {
+        snprintf(dl, sizeof(dl), "sdmc:/switch/homebrew-store/%s.zip", a.id);
+    } else {
+        mkdir(dir, 0777);
+        snprintf(dl, sizeof(dl), "%s/%s.nro", dir, a.id);
+    }
 
     if (!curlDownload(a.download, dl)) {
         snprintf(g_status, sizeof(g_status), "Download failed.");
@@ -485,11 +484,13 @@ bool installApp(const App& a) {
     }
 
     if (isZip) {
-        int n = extractZip(dl, dir);
+        // Homebrew zips carry their own full paths (atmosphere/, switch/, ...),
+        // so they extract to the SD root. Rollback removes only our own files.
+        int n = extractZip(dl, "sdmc:");
         remove(dl);
-        if (n < 0) { snprintf(g_status, sizeof(g_status), "Extract failed (bad zip)."); return false; }
-        snprintf(g_status, sizeof(g_status), "Installed%s: %d file(s) to %s",
-                 a.sha256[0] ? " + verified" : " (unverified)", n, dir);
+        if (n < 0) { snprintf(g_status, sizeof(g_status), "Install failed (bad/partial zip)."); return false; }
+        snprintf(g_status, sizeof(g_status), "Installed%s: %d file(s) to SD root",
+                 a.sha256[0] ? " + verified" : " (unverified)", n);
         return true;
     }
 
@@ -551,7 +552,10 @@ void drawDetail(const App& a) {
     printf("\n  %sLicense%s   : %s\n", BOLD, RESET, a.license);
     printf("  %sSource%s    : %s%s%s\n", BOLD, RESET, CYAN, a.source, RESET);
     printf("  %sDownload%s  : %s%s%s\n", BOLD, RESET, CYAN, a.download, RESET);
-    printf("  %sInstalls%s  : sdmc:/switch/%s/\n", BOLD, RESET, a.id);
+    if (strcmp(a.filetype, "zip") == 0)
+        printf("  %sInstalls%s  : SD card (package, extracted to root)\n", BOLD, RESET);
+    else
+        printf("  %sInstalls%s  : sdmc:/switch/%s/\n", BOLD, RESET, a.id);
 #if STORE_NETWORK
     printf("  %sChecksum%s  : %s\n", BOLD, RESET,
            a.sha256[0] ? "sha256 on file (verified on install)" : "none (install unverified)");

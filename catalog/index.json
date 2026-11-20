@@ -136,7 +136,6 @@
       "source": "https://github.com/switchbrew/nx-hbmenu",
       "download": "https://github.com/switchbrew/nx-hbmenu/releases/download/v3.6.1/nx-hbmenu_v3.6.1.zip",
       "filetype": "zip",
-      "pending": true,
       "platforms": [
         "switch"
       ],
@@ -173,7 +172,6 @@
       "download": "https://github.com/averne/Fizeau/releases/download/v2.8.3/Fizeau-2.8.3-5bf3f0d.zip",
       "filetype": "zip",
       "binary": "",
-      "pending": true,
       "platforms": [
         "switch"
       ],
@@ -192,7 +190,6 @@
       "download": "https://github.com/cathery/sys-con/releases/download/v0.6.5/sys-con-0.6.5.zip",
       "filetype": "zip",
       "binary": "",
-      "pending": true,
       "platforms": [
         "switch"
       ],
@@ -301,7 +298,6 @@
       "download": "https://github.com/retronx-team/sys-clk/releases/download/2.0.1/sys-clk-2.0.1-21fix.zip",
       "filetype": "zip",
       "binary": "",
-      "pending": true,
       "platforms": [
         "switch"
       ],
@@ -320,7 +316,6 @@
       "download": "https://github.com/WerWolv/Tesla-Menu/releases/download/v1.2.3/ovlmenu.zip",
       "filetype": "zip",
       "binary": "",
-      "pending": true,
       "platforms": [
         "switch"
       ],
