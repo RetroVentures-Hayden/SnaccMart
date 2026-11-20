@@ -16,7 +16,7 @@
       "download": "https://github.com/RetroVentures-Hayden/switch-sysinfo/releases/download/v1.3/switch-sysinfo.nro",
       "filetype": "nro",
       "install_path": "/switch/switch-sysinfo/",
-      "pending": true,
+      "sha256": "aadbfa1533916aef99e3b6485e059b3e7bb59dd99a2ca8e0a085c4d58aed79a9",
       "platforms": ["switch", "emulator"],
       "updated": "2026-11-20"
     }
