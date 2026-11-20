@@ -62,3 +62,22 @@ Validate locally before opening the PR:
 pip install jsonschema
 python3 scripts/validate.py
 ```
+
+## Promoting a pending entry (maintainers)
+
+Entries added without a verified download are marked `"pending": true` (shown as
+"coming soon", not installable). To promote them, run — **on a machine with the
+GitHub CLI authenticated and network access** (not the build sandbox) — from the
+repo root:
+
+```bash
+python3 scripts/resolve_pending.py          # dry run: show resolved URL + sha256
+python3 scripts/resolve_pending.py --apply   # fill download/filetype/sha256, clear pending
+python3 scripts/gen_romfs_catalog.py         # refresh catalog.tsv
+python3 scripts/validate.py
+git add -A && git commit && git push
+```
+
+It resolves each pending app's latest release asset, downloads it, hashes it, and
+fills the entry in. Releases with several plausible assets (e.g. RetroArch's
+per-core builds) are reported as `MANUAL` and left pending for you to set by hand.
