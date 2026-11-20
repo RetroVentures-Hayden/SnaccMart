@@ -16,6 +16,9 @@
 #if STORE_NETWORK
 #include <curl/curl.h>
 #include <sys/stat.h>
+// Default live-catalog URL. Override at runtime by placing a URL in
+// sdmc:/switch/homebrew-store/catalog_url.txt (e.g. point at a local mirror).
+#define DEFAULT_CATALOG_URL "https://raw.githubusercontent.com/RetroVentures-Hayden/SnaccMart/main/catalog/catalog.tsv"
 #endif
 
 namespace {
@@ -62,8 +65,9 @@ void field(const char* line, int n, char* dst, size_t cap) {
     dst[len] = '\0';
 }
 
-bool loadCatalog() {
-    FILE* f = fopen("romfs:/catalog.tsv", "rb");
+bool loadCatalogPath(const char* path) {
+    appCount = 0;
+    FILE* f = fopen(path, "rb");
     if (!f) return false;
     char line[1200];
     while (fgets(line, sizeof(line), f) && appCount < MAX_APPS) {
@@ -86,14 +90,55 @@ bool loadCatalog() {
         if (a.id[0]) ++appCount;
     }
     fclose(f);
-    return true;
+    return appCount > 0;
 }
 
 char g_status[256] = "";
+bool g_online = false;
 
 #if STORE_NETWORK
 size_t writeToFile(void* ptr, size_t sz, size_t nm, void* f) {
     return fwrite(ptr, sz, nm, static_cast<FILE*>(f));
+}
+
+// Catalog URL: a user-provided override on the SD card, else the default.
+void getCatalogUrl(char* url, size_t cap) {
+    FILE* cf = fopen("sdmc:/switch/homebrew-store/catalog_url.txt", "rb");
+    if (cf) {
+        if (fgets(url, cap, cf)) {
+            size_t L = strlen(url);
+            while (L && (url[L-1] == '\n' || url[L-1] == '\r' || url[L-1] == ' ')) url[--L] = '\0';
+        } else {
+            url[0] = '\0';
+        }
+        fclose(cf);
+        if (url[0]) return;
+    }
+    snprintf(url, cap, "%s", DEFAULT_CATALOG_URL);
+}
+
+// Fetch the live catalog TSV to a file. Returns true on a clean HTTP download.
+bool fetchCatalogToFile(const char* url, const char* outpath) {
+    mkdir("sdmc:/switch", 0777);
+    mkdir("sdmc:/switch/homebrew-store", 0777);
+    FILE* f = fopen(outpath, "wb");
+    if (!f) return false;
+    CURL* c = curl_easy_init();
+    if (!c) { fclose(f); return false; }
+    curl_easy_setopt(c, CURLOPT_URL, url);
+    curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, writeToFile);
+    curl_easy_setopt(c, CURLOPT_WRITEDATA, f);
+    curl_easy_setopt(c, CURLOPT_CAINFO, "romfs:/cacert.pem");
+    curl_easy_setopt(c, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(c, CURLOPT_SSL_VERIFYHOST, 2L);
+    curl_easy_setopt(c, CURLOPT_USERAGENT, "SnaccMart/0.2");
+    curl_easy_setopt(c, CURLOPT_FAILONERROR, 1L);
+    curl_easy_setopt(c, CURLOPT_TIMEOUT, 30L);
+    CURLcode rc = curl_easy_perform(c);
+    curl_easy_cleanup(c);
+    fclose(f);
+    return rc == CURLE_OK;
 }
 
 // Download the selected app's .nro over HTTPS and install it to
@@ -174,7 +219,12 @@ void drawList(int sel, int top) {
                s ? "" : "");
         if (s) printf("%s", RESET);
     }
-    printf("\n  %s%d app(s)   A: details   +: exit%s\n", DIM, appCount, RESET);
+    printf("\n  %s%d app(s)", DIM, appCount);
+#if STORE_NETWORK
+    printf("   catalog: %s%s%s", g_online ? GREEN : YELLOW,
+           g_online ? "online" : "bundled (offline)", DIM);
+#endif
+    printf("   A: details   +: exit%s\n", RESET);
 }
 
 void drawDetail(const App& a) {
@@ -212,7 +262,19 @@ int main(int argc, char** argv) {
 #endif
 
     bool haveRomfs = R_SUCCEEDED(romfsInit());
-    if (haveRomfs) loadCatalog();
+    bool loaded = false;
+#if STORE_NETWORK
+    {
+        char url[512];
+        getCatalogUrl(url, sizeof(url));
+        if (fetchCatalogToFile(url, "sdmc:/switch/homebrew-store/catalog.tsv") &&
+            loadCatalogPath("sdmc:/switch/homebrew-store/catalog.tsv")) {
+            g_online = true;
+            loaded = true;
+        }
+    }
+#endif
+    if (!loaded && haveRomfs) loadCatalogPath("romfs:/catalog.tsv"); // bundled fallback
 
     int sel = 0, top = 0;
     bool detail = false;

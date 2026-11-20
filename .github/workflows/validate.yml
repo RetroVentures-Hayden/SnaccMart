@@ -6,9 +6,9 @@ name: validate
 on:
   push:
     branches: [ "**" ]
-    paths: [ "catalog/**", "schema/**", "scripts/validate.py", ".github/workflows/validate.yml" ]
+    paths: [ "catalog/**", "schema/**", "scripts/**", ".github/workflows/validate.yml" ]
   pull_request:
-    paths: [ "catalog/**", "schema/**", "scripts/validate.py" ]
+    paths: [ "catalog/**", "schema/**", "scripts/**" ]
   workflow_dispatch:
 
 jobs:
@@ -23,3 +23,8 @@ jobs:
         run: pip install jsonschema
       - name: Validate catalog
         run: python3 scripts/validate.py
+      - name: Check published catalog.tsv is in sync with index.json
+        run: |
+          python3 scripts/gen_romfs_catalog.py
+          git diff --exit-code -- catalog/catalog.tsv \
+            || { echo "::error::catalog/catalog.tsv is stale — run scripts/gen_romfs_catalog.py and commit it"; exit 1; }

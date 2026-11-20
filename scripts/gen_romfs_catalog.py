@@ -11,7 +11,12 @@ import json
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-OUT = ROOT / "client" / "romfs" / "catalog.tsv"
+# Two outputs from the same data:
+#   - client/romfs/catalog.tsv : bundled into the .nro (offline fallback)
+#   - catalog/catalog.tsv      : committed + published at a stable URL for the
+#                                client to fetch live (kept in sync by CI)
+OUT_ROMFS = ROOT / "client" / "romfs" / "catalog.tsv"
+OUT_PUBLISHED = ROOT / "catalog" / "catalog.tsv"
 
 
 def clean(v):
@@ -20,7 +25,6 @@ def clean(v):
 
 def main():
     index = json.loads((ROOT / "catalog" / "index.json").read_text(encoding="utf-8"))
-    OUT.parent.mkdir(parents=True, exist_ok=True)
     rows = []
     for a in index.get("apps", []):
         rows.append("\t".join([
@@ -35,8 +39,11 @@ def main():
             clean(a.get("source")),
             "1" if a.get("requires_assets") else "0",
         ]))
-    OUT.write_text("\n".join(rows) + ("\n" if rows else ""), encoding="utf-8")
-    print(f"wrote {OUT.relative_to(ROOT)} ({len(rows)} app(s))")
+    body = "\n".join(rows) + ("\n" if rows else "")
+    for out in (OUT_ROMFS, OUT_PUBLISHED):
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(body, encoding="utf-8")
+    print(f"wrote catalog.tsv to romfs + published ({len(rows)} app(s))")
 
 
 if __name__ == "__main__":

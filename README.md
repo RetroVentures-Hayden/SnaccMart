@@ -101,12 +101,15 @@ cd client && make                      # -> client/homebrew-store.nro
 | Version | Status |
 |---------|--------|
 | v0.1 | **Browse** the catalog + per-app detail view ✅ |
-| v0.2 | **Download + install to SD** over the network 🚧 (in progress) |
-| later | `sha256` verification · live catalog fetch · zip support |
+| v0.2 | **Download + install to SD** + **live catalog fetch** over HTTPS ✅ (compiles; on-device test pending) |
+| later | `sha256` verification · `.zip` support |
 
-The networked installer is built by the **`client-net`** workflow (it adds the
-`switch-curl` portlib and a CA bundle). The default `client` build stays
-dependency-free so it's always green.
+The networked client (built by the **`client-net`** workflow, which adds the
+`switch-curl` portlib + CA bundle) fetches the catalog live from
+`catalog/catalog.tsv` at startup and falls back to the bundled copy when offline.
+To point it at a mirror (e.g. a home server), drop a URL in
+`sdmc:/switch/homebrew-store/catalog_url.txt`. The default `client` build stays
+dependency-free (browse-only) so it's always green.
 
 ## Safety & malware policy
 
@@ -138,9 +141,9 @@ in the design assumes a single origin.
 - [x] Web catalog front-end
 - [x] CI schema validation
 - [x] On-console client — browse
-- [ ] On-console download + install to SD (v0.2, in progress)
+- [x] On-console download + install to SD (v0.2)
+- [x] Live catalog fetch over the network (with SD override for mirrors)
 - [ ] `sha256` verification on install
-- [ ] Live catalog fetch over the network
 - [ ] `.zip` package support (extract to install path)
 - [ ] Auto-updating self-host mirror
 
