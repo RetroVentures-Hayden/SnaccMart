@@ -49,9 +49,25 @@ The networked client reads that URL at startup instead of the GitHub default, so
 your console pulls the catalog from your own mirror. If the mirror is
 unreachable, the client falls back to the catalog bundled in the `.nro`.
 
+## Security note (read this)
+
+The mirror serves plain **HTTP**. That is fine on a **trusted LAN**, but be aware:
+
+- **`sha256` does not protect a swapped catalog.** The per-app checksums live
+  *inside* the catalog, so anyone who can modify the HTTP response (someone on
+  your network, a rogue DHCP/DNS, an open Wi-Fi) can replace both an app's
+  download URL **and** its hash. The checksum only protects against accidental
+  corruption and a tampered binary at a *trusted* URL — not against a tampered
+  catalog.
+- **The default (GitHub raw over HTTPS) is safe** precisely because the
+  transport is authenticated. A mirror trades that away for locality.
+- If you expose the mirror beyond your LAN, **put it behind a reverse proxy with
+  TLS** (Caddy/Traefik/nginx) and use the `https://` URL on the console.
+
+Everything downloaded still comes from each app's own (HTTPS) `download` URL
+unless the catalog points elsewhere — so keep your mirror's network trusted.
+
 ## Notes
 
-- Plain HTTP is fine on a trusted LAN. If you expose it beyond your network, put
-  it behind a reverse proxy with TLS.
 - The container keeps its checkout in a named volume, so restarts are fast and
   survive redeploys.

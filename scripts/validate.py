@@ -55,6 +55,21 @@ def main():
             loc = "/".join(str(p) for p in e.path)
             errors.append(f"{where}: {loc + ': ' if loc else ''}{e.message}")
 
+        # URL scheme checks ('format: uri' isn't asserted by default). Reject
+        # javascript:/data:/etc., and require https for integrity-critical URLs.
+        if isinstance(app, dict):
+            for key in ("download", "source"):
+                v = app.get(key)
+                if isinstance(v, str) and v and not v.startswith("https://"):
+                    errors.append(f"{where}: '{key}' must be an https:// URL")
+            for key in ("homepage", "icon"):
+                v = app.get(key)
+                if isinstance(v, str) and v and not (v.startswith("https://") or v.startswith("http://")):
+                    errors.append(f"{where}: '{key}' must be an http(s):// URL")
+            for s in app.get("screenshots") or []:
+                if isinstance(s, str) and not (s.startswith("https://") or s.startswith("http://")):
+                    errors.append(f"{where}: screenshot must be an http(s):// URL")
+
     # Templates must stay schema-valid too.
     examples = load("catalog/example-entry.json").get("examples", [])
     for i, ex in enumerate(examples):

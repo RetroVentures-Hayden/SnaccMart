@@ -71,6 +71,21 @@ void field(const char* line, int n, char* dst, size_t cap) {
     dst[len] = '\0';
 }
 
+// Validate an id the same way the schema does: ^[a-z0-9][a-z0-9-]{1,63}$.
+// The id becomes a filesystem path on the console, so a bad one must never be
+// trusted from a downloaded/redirected catalog (path-traversal defense).
+bool validId(const char* s) {
+    size_t n = strlen(s);
+    if (n < 2 || n > 64) return false;
+    char c0 = s[0];
+    if (!((c0 >= 'a' && c0 <= 'z') || (c0 >= '0' && c0 <= '9'))) return false;
+    for (size_t i = 1; i < n; ++i) {
+        char c = s[i];
+        if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-')) return false;
+    }
+    return true;
+}
+
 bool loadCatalogPath(const char* path) {
     appCount = 0;
     FILE* f = fopen(path, "rb");
@@ -97,7 +112,7 @@ bool loadCatalogPath(const char* path) {
         field(line, 11, a.filetype, sizeof(a.filetype));
         if (!a.filetype[0]) snprintf(a.filetype, sizeof(a.filetype), "nro");
         field(line, 12, a.binary, sizeof(a.binary));
-        if (a.id[0]) ++appCount;
+        if (validId(a.id)) ++appCount; // skip entries with an unsafe/invalid id
     }
     fclose(f);
     return appCount > 0;
@@ -285,7 +300,29 @@ void makeParentDirs(const char* fullpath) {
     }
 }
 
-bool zipWriteEntry(FILE* z, long dataOff, uint32_t compSize, uint16_t method, const char* outpath) {
+// Recursively delete a directory tree (used to roll back a failed extraction).
+void rmrf(const char* path) {
+    DIR* d = opendir(path);
+    if (d) {
+        struct dirent* e;
+        while ((e = readdir(d)) != nullptr) {
+            if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
+            char p[1200];
+            snprintf(p, sizeof(p), "%s/%s", path, e->d_name);
+            struct stat st{};
+            if (stat(p, &st) == 0 && S_ISDIR(st.st_mode)) rmrf(p);
+            else remove(p);
+        }
+        closedir(d);
+        rmdir(path);
+    } else {
+        remove(path);
+    }
+}
+
+// Write one zip entry, verifying its CRC-32 and catching write errors.
+bool zipWriteEntry(FILE* z, long dataOff, uint32_t compSize, uint16_t method,
+                   uint32_t expectedCrc, const char* outpath) {
     size_t L = strlen(outpath);
     makeParentDirs(outpath);
     if (L && outpath[L-1] == '/') { mkdir(outpath, 0777); return true; } // directory entry
@@ -295,6 +332,8 @@ bool zipWriteEntry(FILE* z, long dataOff, uint32_t compSize, uint16_t method, co
     if (fseek(z, dataOff, SEEK_SET) != 0) { fclose(out); remove(outpath); return false; }
 
     bool ok = true;
+    uLong crc = crc32(0L, Z_NULL, 0);
+
     if (method == 0) { // stored
         uint8_t buf[16384];
         uint32_t left = compSize;
@@ -302,7 +341,8 @@ bool zipWriteEntry(FILE* z, long dataOff, uint32_t compSize, uint16_t method, co
             size_t take = left < sizeof(buf) ? left : sizeof(buf);
             size_t r = fread(buf, 1, take, z);
             if (r == 0) { ok = false; break; }
-            fwrite(buf, 1, r, out);
+            if (fwrite(buf, 1, r, out) != r) { ok = false; break; } // write error (e.g. disk full)
+            crc = crc32(crc, buf, uInt(r));
             left -= uint32_t(r);
         }
     } else if (method == 8) { // deflate (raw)
@@ -323,13 +363,19 @@ bool zipWriteEntry(FILE* z, long dataOff, uint32_t compSize, uint16_t method, co
             ret = inflate(&s, Z_NO_FLUSH);
             if (ret == Z_NEED_DICT || ret == Z_DATA_ERROR || ret == Z_MEM_ERROR || ret == Z_STREAM_ERROR) { ok = false; break; }
             size_t have = sizeof(o) - s.avail_out;
-            if (have) fwrite(o, 1, have, out);
+            if (have) {
+                if (fwrite(o, 1, have, out) != have) { ok = false; break; }
+                crc = crc32(crc, o, uInt(have));
+            }
         } while (ret != Z_STREAM_END);
         inflateEnd(&s);
     } else {
         ok = false; // unsupported compression method
     }
+
+    if (ok && (fflush(out) != 0 || ferror(out))) ok = false; // catch buffered write errors
     fclose(out);
+    if (ok && uint32_t(crc) != expectedCrc) ok = false;       // integrity check
     if (!ok) remove(outpath);
     return ok;
 }
@@ -356,11 +402,13 @@ int extractZip(const char* zippath, const char* outdir) {
     free(tail);
 
     int written = 0;
+    bool failed = false;
     if (fseek(z, cdoff, SEEK_SET) != 0) { fclose(z); return -1; }
-    for (uint16_t i = 0; i < total; ++i) {
+    for (uint16_t i = 0; i < total && !failed; ++i) {
         uint8_t hdr[46];
         if (fread(hdr, 1, 46, z) != 46 || rd32(hdr) != 0x02014b50u) break;
         uint16_t method   = rd16(hdr + 10);
+        uint32_t expCrc   = rd32(hdr + 16);
         uint32_t compSize = rd32(hdr + 20);
         uint16_t nameLen  = rd16(hdr + 28);
         uint16_t extraLen = rd16(hdr + 30);
@@ -384,12 +432,14 @@ int extractZip(const char* zippath, const char* outdir) {
             if (zipNameSafe(name)) {
                 char outp[1200];
                 snprintf(outp, sizeof(outp), "%s/%s", outdir, name);
-                if (zipWriteEntry(z, dataOff, compSize, method, outp)) ++written;
+                if (zipWriteEntry(z, dataOff, compSize, method, expCrc, outp)) ++written;
+                else failed = true;
             }
         }
         fseek(z, nextCd, SEEK_SET);
     }
     fclose(z);
+    if (failed) { rmrf(outdir); return -1; } // roll back a partial extraction
     return written;
 }
 

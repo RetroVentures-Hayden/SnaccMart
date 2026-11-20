@@ -118,14 +118,17 @@ const FALLBACK = {
 };
 
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// Only allow http(s) links — blocks javascript:, data:, etc. even if a bad
+// entry slips through catalog review.
+const httpOk = u => /^https?:\/\//i.test(String(u||""));
 let APPS = [];
 
 function card(a){
   const assets = a.requires_assets
     ? `<div class="assets">Needs your own legally-owned data files.</div>` : "";
   const ver = a.version ? `v${esc(a.version)}` : "";
-  const dl = a.download && !a.download.startsWith("https://example.org")
-    ? `<a class="btn dl" href="${esc(a.download)}" rel="noopener">Download</a>`
+  const dl = httpOk(a.download) && !a.download.startsWith("https://example.org")
+    ? `<a class="btn dl" href="${esc(a.download)}" rel="noopener noreferrer">Download</a>`
     : `<a class="btn dl" href="#" aria-disabled="true" style="opacity:.5;pointer-events:none">Coming soon</a>`;
   const icon = a.icon ? `<img class="ic" src="${esc(a.icon)}" alt="">` : `<span class="ic"></span>`;
   return `<article class="card">
@@ -142,7 +145,7 @@ function card(a){
     <div class="meta">${ver?`<span>${ver}</span>`:""}${a.license?`<span>${esc(a.license)}</span>`:""}</div>
     <div class="row">
       ${dl}
-      ${a.source?`<a class="btn src" href="${esc(a.source)}" rel="noopener">Source</a>`:""}
+      ${httpOk(a.source)?`<a class="btn src" href="${esc(a.source)}" rel="noopener noreferrer">Source</a>`:""}
     </div>
   </article>`;
 }
