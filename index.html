@@ -113,7 +113,7 @@ const FALLBACK = {
      "version":"1.3.0","license":"MIT",
      "source":"https://github.com/RetroVentures-Hayden/switch-sysinfo",
      "download":"https://github.com/RetroVentures-Hayden/switch-sysinfo/releases/download/v1.3/switch-sysinfo.nro",
-     "platforms":["switch","emulator"]}
+     "pending":true,"platforms":["switch","emulator"]}
   ]
 };
 
@@ -127,9 +127,10 @@ function card(a){
   const assets = a.requires_assets
     ? `<div class="assets">Needs your own legally-owned data files.</div>` : "";
   const ver = a.version ? `v${esc(a.version)}` : "";
-  const dl = httpOk(a.download) && !a.download.startsWith("https://example.org")
-    ? `<a class="btn dl" href="${esc(a.download)}" rel="noopener noreferrer">Download</a>`
-    : `<a class="btn dl" href="#" aria-disabled="true" style="opacity:.5;pointer-events:none">Coming soon</a>`;
+  const comingSoon = a.pending || !httpOk(a.download) || a.download.startsWith("https://example.org");
+  const dl = comingSoon
+    ? `<a class="btn dl" href="#" aria-disabled="true" style="opacity:.5;pointer-events:none">Coming soon</a>`
+    : `<a class="btn dl" href="${esc(a.download)}" rel="noopener noreferrer">Download</a>`;
   const icon = a.icon ? `<img class="ic" src="${esc(a.icon)}" alt="">` : `<span class="ic"></span>`;
   return `<article class="card">
     <div class="top">${icon}

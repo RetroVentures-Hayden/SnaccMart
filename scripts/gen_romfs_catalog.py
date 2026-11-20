@@ -3,7 +3,7 @@
 reads from romfs (romfs:/catalog.tsv), so the client needs no JSON parser.
 
 One line per app, fields in this fixed order (tabs/newlines stripped):
-  id  name  author  category  version  license  description  download  source  requires_assets(0|1)  sha256  filetype  binary
+  id  name  author  category  version  license  description  download  source  requires_assets(0|1)  sha256  filetype  binary  pending(0|1)
 
 Run from the repo root:  python3 scripts/gen_romfs_catalog.py
 """
@@ -41,6 +41,7 @@ def main():
             clean(a.get("sha256")),
             clean(a.get("filetype") or "nro"),
             clean(a.get("binary")),
+            "1" if a.get("pending") else "0",
         ]))
     body = "\n".join(rows) + ("\n" if rows else "")
     for out in (OUT_ROMFS, OUT_PUBLISHED):

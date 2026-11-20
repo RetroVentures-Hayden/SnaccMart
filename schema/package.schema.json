@@ -26,6 +26,7 @@
     "size":      { "type": "integer", "minimum": 0, "description": "Download size in bytes (optional)." },
     "sha256":    { "type": "string", "pattern": "^[a-f0-9]{64}$", "description": "Download checksum (strongly recommended)." },
     "requires_assets": { "type": "boolean", "description": "True if the user must supply their own legally-owned data (e.g. game WAD/ROM for an open-source engine/emulator). The store never ships that data." },
+    "pending": { "type": "boolean", "description": "True if the app is listed but not yet downloadable (e.g. awaiting a release). Clients show it as 'coming soon' and do not install it." },
     "platforms": { "type": "array", "items": { "type": "string", "enum": ["switch", "switch2", "emulator"] }, "description": "Where it's expected to run." },
     "updated":   { "type": "string", "format": "date", "description": "Last update, YYYY-MM-DD." }
   },

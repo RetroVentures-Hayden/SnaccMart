@@ -50,6 +50,7 @@ struct App {
     char sha256[72]   = "";
     char filetype[8]  = "nro"; // "nro" or "zip"
     char binary[256]  = "";    // path to the .nro inside a zip (informational)
+    bool pending      = false; // listed but not yet downloadable
 };
 
 constexpr int MAX_APPS = 512;
@@ -112,6 +113,8 @@ bool loadCatalogPath(const char* path) {
         field(line, 11, a.filetype, sizeof(a.filetype));
         if (!a.filetype[0]) snprintf(a.filetype, sizeof(a.filetype), "nro");
         field(line, 12, a.binary, sizeof(a.binary));
+        char pflag[4]; field(line, 13, pflag, sizeof(pflag));
+        a.pending = (pflag[0] == '1');
         if (validId(a.id)) ++appCount; // skip entries with an unsafe/invalid id
     }
     fclose(f);
@@ -554,8 +557,13 @@ void drawDetail(const App& a) {
     if (a.assets)
         printf("\n  %s! Needs your own legally-owned data files.%s\n", YELLOW, RESET);
 #if STORE_NETWORK
-    if (g_status[0]) printf("\n  %s%s%s\n", GREEN, g_status, RESET);
-    printf("\n  %sX: download & install to SD   B: back   +: exit%s\n", DIM, RESET);
+    if (a.pending) {
+        printf("\n  %sComing soon - not yet downloadable.%s\n", YELLOW, RESET);
+        printf("\n  %sB: back   +: exit%s\n", DIM, RESET);
+    } else {
+        if (g_status[0]) printf("\n  %s%s%s\n", GREEN, g_status, RESET);
+        printf("\n  %sX: download & install to SD   B: back   +: exit%s\n", DIM, RESET);
+    }
 #else
     printf("\n  %sInstall from the console needs the networked build (v0.2).\n", DIM);
     printf("  For now, download from the Source/Download URL on a PC.%s\n", RESET);
@@ -610,9 +618,13 @@ int main(int argc, char** argv) {
             if (kDown & HidNpadButton_B) { detail = false; g_status[0] = '\0'; redraw = true; }
 #if STORE_NETWORK
             if (kDown & HidNpadButton_X) {
-                snprintf(g_status, sizeof(g_status), "Downloading...");
-                clearScreen(); drawDetail(apps[sel]); consoleUpdate(NULL);
-                installApp(apps[sel]); // blocking; sets g_status
+                if (apps[sel].pending) {
+                    snprintf(g_status, sizeof(g_status), "Not yet available.");
+                } else {
+                    snprintf(g_status, sizeof(g_status), "Downloading...");
+                    clearScreen(); drawDetail(apps[sel]); consoleUpdate(NULL);
+                    installApp(apps[sel]); // blocking; sets g_status
+                }
                 redraw = true;
             }
 #endif
