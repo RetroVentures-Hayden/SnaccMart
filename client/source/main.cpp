@@ -391,7 +391,8 @@ int extractZip(const char* zippath, const char* outdir) {
     // Track the files we create so a failure removes ONLY those — never a broad
     // delete, since extraction may target the SD root.
     constexpr int TRACK_CAP = 8192;
-    char* created[TRACK_CAP];
+    char** created = static_cast<char**>(malloc(TRACK_CAP * sizeof(char*))); // off the stack
+    if (!created) { fclose(z); return -1; }
     int ncreated = 0;
     int written = 0;
     bool failed = false;
@@ -443,9 +444,11 @@ int extractZip(const char* zippath, const char* outdir) {
 
     if (failed) {
         for (int i = 0; i < ncreated; ++i) { remove(created[i]); free(created[i]); }
+        free(created);
         return -1;
     }
     for (int i = 0; i < ncreated; ++i) free(created[i]);
+    free(created);
     return written;
 }
 
@@ -587,14 +590,16 @@ int main(int argc, char** argv) {
     PadState pad; padInitializeDefault(&pad);
 
 #if STORE_NETWORK
-    socketInitializeDefault();
-    curl_global_init(CURL_GLOBAL_DEFAULT);
+    // Only touch curl if the socket layer actually came up — otherwise curl
+    // would run on uninitialised sockets and crash.
+    bool netOk = R_SUCCEEDED(socketInitializeDefault());
+    if (netOk) curl_global_init(CURL_GLOBAL_DEFAULT);
 #endif
 
     bool haveRomfs = R_SUCCEEDED(romfsInit());
     bool loaded = false;
 #if STORE_NETWORK
-    {
+    if (netOk) {
         char url[512];
         getCatalogUrl(url, sizeof(url));
         if (fetchCatalogToFile(url, "sdmc:/switch/homebrew-store/catalog.tsv") &&
@@ -628,6 +633,8 @@ int main(int argc, char** argv) {
             if (kDown & HidNpadButton_X) {
                 if (apps[sel].pending) {
                     snprintf(g_status, sizeof(g_status), "Not yet available.");
+                } else if (!netOk) {
+                    snprintf(g_status, sizeof(g_status), "No network connection.");
                 } else {
                     snprintf(g_status, sizeof(g_status), "Downloading...");
                     clearScreen(); drawDetail(apps[sel]); consoleUpdate(NULL);
@@ -649,8 +656,7 @@ int main(int argc, char** argv) {
 
     if (haveRomfs) romfsExit();
 #if STORE_NETWORK
-    curl_global_cleanup();
-    socketExit();
+    if (netOk) { curl_global_cleanup(); socketExit(); }
 #endif
     consoleExit(NULL);
     return 0;

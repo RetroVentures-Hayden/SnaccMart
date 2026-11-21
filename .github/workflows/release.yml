@@ -41,25 +41,31 @@ jobs:
           python3 scripts/gen_romfs_catalog.py
           curl -fsSL -o client/romfs/cacert.pem https://curl.se/ca/cacert.pem
 
-      - name: Build networked client
+      - name: Build clients (networked + offline)
         run: |
           export DEVKITPRO=/opt/devkitpro
-          cd client && make STORE_NETWORK=1
-          ls -la *.nro
+          cd client
+          make STORE_NETWORK=1 && mv homebrew-store.nro ../homebrew-store.nro
+          make clean
+          make STORE_NETWORK=0 && mv homebrew-store.nro ../homebrew-store-offline.nro
+          ls -la ../*.nro
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: ${{ github.event.inputs.tag || github.ref_name }}
-          files: client/homebrew-store.nro
+          files: |
+            homebrew-store.nro
+            homebrew-store-offline.nro
           generate_release_notes: true
           body: |
-            **SnaccMart on-console client** (networked build).
+            **SnaccMart on-console client.** Copy an `.nro` to your SD card under
+            `/switch/homebrew-store/` and launch it from the Homebrew Launcher.
+            Requires a homebrew-enabled Switch (or an emulator) — like all homebrew
+            it does not run on stock firmware.
 
-            Download `homebrew-store.nro`, copy it to your SD card under
-            `/switch/homebrew-store/`, and launch it from the Homebrew Launcher.
-
-            Requires a homebrew-enabled Switch (or an emulator) — like all homebrew,
-            it does not run on stock firmware. Browse the catalog, and download +
-            install apps (verified by sha256) straight to the SD card.
+            - **`homebrew-store.nro`** — full build: browse + download + sha256-verify
+              + install to SD over the network.
+            - **`homebrew-store-offline.nro`** — browse only, no networking. Use this
+              if the full build crashes, to confirm the app itself runs.
