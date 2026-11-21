@@ -1,0 +1,65 @@
+name: release
+
+# Builds the networked on-console client (download + install + sha256 + zip) and
+# publishes homebrew-store.nro as a downloadable GitHub Release asset.
+#
+# Easiest way to cut a release: Actions -> release -> "Run workflow", type a tag
+# like "client-v0.2", and Run. It builds and publishes the .nro for you.
+# (Also runs automatically if you push a tag matching client-v* / v*.)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. client-v0.2)"
+        required: true
+        default: "client-v0.2"
+  push:
+    tags: [ "client-v*", "v*" ]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install helpers
+        run: |
+          command -v python3 >/dev/null 2>&1 && command -v curl >/dev/null 2>&1 \
+            || (apt-get update && apt-get install -y --no-install-recommends python3 curl ca-certificates)
+
+      - name: Install switch-curl portlib
+        run: dkp-pacman -S --noconfirm switch-curl
+
+      - name: Generate catalog + CA bundle
+        run: |
+          python3 scripts/gen_romfs_catalog.py
+          curl -fsSL -o client/romfs/cacert.pem https://curl.se/ca/cacert.pem
+
+      - name: Build networked client
+        run: |
+          export DEVKITPRO=/opt/devkitpro
+          cd client && make STORE_NETWORK=1
+          ls -la *.nro
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: client/homebrew-store.nro
+          generate_release_notes: true
+          body: |
+            **SnaccMart on-console client** (networked build).
+
+            Download `homebrew-store.nro`, copy it to your SD card under
+            `/switch/homebrew-store/`, and launch it from the Homebrew Launcher.
+
+            Requires a homebrew-enabled Switch (or an emulator) — like all homebrew,
+            it does not run on stock firmware. Browse the catalog, and download +
+            install apps (verified by sha256) straight to the SD card.

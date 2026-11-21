@@ -93,6 +93,12 @@ the file directly (browsers block `fetch()` from `file://`).
 
 ## The on-console client
 
+**Just want the app?** Download the latest `homebrew-store.nro` from the
+[Releases page](https://github.com/RetroVentures-Hayden/SnaccMart/releases) — no
+building required. Copy it to `sdmc:/switch/homebrew-store/` and launch it from
+the Homebrew Launcher. (To cut a new release: Actions → **release** → Run
+workflow.)
+
 `client/` builds `homebrew-store.nro`. The catalog is converted from
 `index.json` into a compact `romfs/catalog.tsv` at build time
 (`scripts/gen_romfs_catalog.py`) and bundled, so the app needs no JSON parser.
